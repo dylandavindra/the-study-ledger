@@ -135,6 +135,39 @@ router.post("/sessions", (req, res) => {
   res.status(201).json(db.prepare("SELECT * FROM sessions WHERE id = ?").get(info.lastInsertRowid));
 });
 
+/* ---------- Sessions: add a whole weekly/biweekly run at once ---------- */
+router.post("/sessions/bulk", (req, res) => {
+  const userId = req.session.userId;
+  const { module, type, start, end, room, dates } = req.body;
+
+  if (!Array.isArray(dates) || dates.length === 0) {
+    return res.status(400).json({ error: "dates must be a non-empty array" });
+  }
+  if (dates.length > 104) {
+    return res.status(400).json({ error: "That's more than two years of classes in one go — narrow the date range" });
+  }
+  if (!module || !type || !start || !end) {
+    return res.status(400).json({ error: "module, type, start and end are required" });
+  }
+  if (type !== "S" && type !== "L") {
+    return res.status(400).json({ error: "type must be 'S' (Seminar) or 'L' (Lab)" });
+  }
+  const mod = db.prepare("SELECT code FROM modules WHERE user_id = ? AND code = ?").get(userId, module);
+  if (!mod) return res.status(400).json({ error: "Unknown module code" });
+
+  const seriesId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const insert = db.prepare(
+    "INSERT INTO sessions (user_id, date, module, type, start, end, room, series_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+  );
+  const insertAll = db.transaction((rows) => {
+    rows.forEach((date) => insert.run(userId, date, module, type, start, end, room || null, seriesId));
+  });
+  insertAll(dates);
+
+  const created = db.prepare("SELECT * FROM sessions WHERE user_id = ? AND series_id = ? ORDER BY date").all(userId, seriesId);
+  res.status(201).json({ seriesId, sessions: created });
+});
+
 router.patch("/sessions/:id", (req, res) => {
   const userId = req.session.userId;
   const existing = db.prepare("SELECT * FROM sessions WHERE id = ? AND user_id = ?").get(req.params.id, userId);
@@ -159,6 +192,16 @@ router.patch("/sessions/:id", (req, res) => {
   db.prepare("UPDATE sessions SET date = ?, module = ?, type = ?, start = ?, end = ?, room = ? WHERE id = ? AND user_id = ?")
     .run(date, module, type, start, end, room, req.params.id, userId);
   res.json(db.prepare("SELECT * FROM sessions WHERE id = ?").get(req.params.id));
+});
+
+/* ---------- Sessions: remove every occurrence in a recurring series ---------- */
+router.delete("/sessions/series/:seriesId", (req, res) => {
+  const userId = req.session.userId;
+  const info = db
+    .prepare("DELETE FROM sessions WHERE series_id = ? AND user_id = ?")
+    .run(req.params.seriesId, userId);
+  if (info.changes === 0) return res.status(404).json({ error: "Series not found" });
+  res.json({ deleted: info.changes });
 });
 
 router.delete("/sessions/:id", (req, res) => {

@@ -39,14 +39,15 @@ db.exec(`
   );
 
   CREATE TABLE IF NOT EXISTS sessions (
-    id      INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL REFERENCES users(id),
-    date    TEXT NOT NULL,
-    module  TEXT NOT NULL,
-    type    TEXT NOT NULL CHECK (type IN ('S','L')),
-    start   TEXT NOT NULL,
-    end     TEXT NOT NULL,
-    room    TEXT
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id   INTEGER NOT NULL REFERENCES users(id),
+    date      TEXT NOT NULL,
+    module    TEXT NOT NULL,
+    type      TEXT NOT NULL CHECK (type IN ('S','L')),
+    start     TEXT NOT NULL,
+    end       TEXT NOT NULL,
+    room      TEXT,
+    series_id TEXT
   );
 
   CREATE TABLE IF NOT EXISTS assessments (
@@ -136,14 +137,15 @@ if (!hasUserId) {
         UNIQUE(user_id, code)
       );
       CREATE TABLE sessions (
-        id      INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL REFERENCES users(id),
-        date    TEXT NOT NULL,
-        module  TEXT NOT NULL,
-        type    TEXT NOT NULL CHECK (type IN ('S','L')),
-        start   TEXT NOT NULL,
-        end     TEXT NOT NULL,
-        room    TEXT
+        id        INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id   INTEGER NOT NULL REFERENCES users(id),
+        date      TEXT NOT NULL,
+        module    TEXT NOT NULL,
+        type      TEXT NOT NULL CHECK (type IN ('S','L')),
+        start     TEXT NOT NULL,
+        end       TEXT NOT NULL,
+        room      TEXT,
+        series_id TEXT
       );
       CREATE TABLE assessments (
         id       INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -197,10 +199,18 @@ if (!hasUserId) {
   console.log(`Existing data moved to a new "admin" account (password: your APP_PASSWORD, default "${APP_PASSWORD}" if unset).`);
 }
 
+// Migration: tag sessions created together (weekly/biweekly recurrence)
+// with a shared series_id, so a whole run of classes can be deleted at once.
+const sessionColumns = db.prepare("PRAGMA table_info(sessions)").all().map((c) => c.name);
+if (!sessionColumns.includes("series_id")) {
+  db.exec("ALTER TABLE sessions ADD COLUMN series_id TEXT");
+}
+
 db.exec(`
   CREATE INDEX IF NOT EXISTS idx_modules_user ON modules(user_id);
   CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
   CREATE INDEX IF NOT EXISTS idx_sessions_date ON sessions(date);
+  CREATE INDEX IF NOT EXISTS idx_sessions_series ON sessions(series_id);
   CREATE INDEX IF NOT EXISTS idx_assessments_user ON assessments(user_id);
   CREATE INDEX IF NOT EXISTS idx_assessments_due ON assessments(due);
   CREATE INDEX IF NOT EXISTS idx_logs_user ON logs(user_id);

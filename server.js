@@ -38,7 +38,7 @@ app.use("/api/auth", authRouter);
 // Everything else — the app itself and its data API — requires a session.
 // The login/signup pages and the shared stylesheet are the only things a
 // signed-out visitor can reach.
-const PUBLIC_PATHS = new Set(["/login.html", "/signup.html", "/styles.css"]);
+const PUBLIC_PATHS = new Set(["/login.html", "/signup.html", "/styles.css", "/term-label.js"]);
 app.use((req, res, next) => {
   if (req.session && req.session.userId) return next();
   if (PUBLIC_PATHS.has(req.path)) return next();

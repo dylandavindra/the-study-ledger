@@ -5,8 +5,6 @@
   var STATE = { modules: [], sessions: [], assessments: [], logs: [], prepItems: [], term: null };
   var modByCode = {};
 
-  var TERM_START, CLASSES_END, EXAM_START, EXAM_END, TERM_WEEKS;
-
   /* ============ API helper ============ */
   async function api(method, path, body) {
     var res = await fetch("/api" + path, {
@@ -34,11 +32,6 @@
     STATE = await api("GET", "/state");
     modByCode = {};
     STATE.modules.forEach(function (m) { modByCode[m.code] = m; });
-    TERM_START = new Date(STATE.term.start + "T00:00:00+08:00");
-    CLASSES_END = new Date(STATE.term.classesEnd + "T23:59:00+08:00");
-    EXAM_START = new Date(STATE.term.examStart + "T00:00:00+08:00");
-    EXAM_END = new Date(STATE.term.examEnd + "T23:59:00+08:00");
-    TERM_WEEKS = STATE.term.weeks;
   }
 
   /* ============ Helpers ============ */
@@ -52,25 +45,59 @@
   function daysBetween(a, b) { return Math.round((b - a) / 86400000); }
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
 
+  // Term dates follow SUSS's fixed baseline (see term-label.js) rather than
+  // anything the user has to type in: Jul Sem = 2nd Mon of Aug - last Sun of
+  // Oct, Jan Sem = 2nd Mon of Jan - last Sun of Mar. `active` is false during
+  // the gap between semesters, when `start`/`end` describe the next one.
+  function getTermInfo() {
+    var term = window.SussTerm.currentTerm(new Date());
+    var weeks = Math.max(1, Math.round((daysBetween(term.start, term.end) + 1) / 7));
+    return { start: term.start, end: term.end, weeks: weeks, active: term.active };
+  }
+
   /* ============ Header / term status ============ */
   function renderTermStatus() {
     var today = todayLocal();
-    var weekNum = Math.min(TERM_WEEKS, Math.max(1, Math.floor(daysBetween(TERM_START, today) / 7) + 1));
-    var toClassesEnd = daysBetween(today, CLASSES_END);
-    var toExam = daysBetween(today, EXAM_START);
+    var term = getTermInfo();
     var html = "";
-    if (today < EXAM_START) {
-      html += '<span class="term-pill accent">Week <strong>' + weekNum + '</strong> of ' + TERM_WEEKS + '</span>';
-    }
-    if (today <= CLASSES_END) {
-      html += '<span class="term-pill"><strong>' + toClassesEnd + '</strong> days to last class</span>';
-    }
-    if (today <= EXAM_END) {
-      html += '<span class="term-pill' + (toExam <= 14 && today < EXAM_START ? ' accent' : '') + '"><strong>' + (today < EXAM_START ? toExam : "") + '</strong>' + (today < EXAM_START ? " days to exams" : "Exams are on") + '</span>';
+    if (term.active) {
+      var weekNum = Math.min(term.weeks, Math.max(1, Math.floor(daysBetween(term.start, today) / 7) + 1));
+      html += '<span class="term-pill accent">Week <strong>' + weekNum + '</strong> of ' + term.weeks + '</span>';
     } else {
-      html += '<span class="term-pill">Exams complete</span>';
+      html += '<span class="term-pill">Term break — starts <strong>' + fmtShort(term.start) + '</strong></span>';
     }
+
+    // "Last submission" — the latest due date among non-exam assessments
+    // (TMAs, GBAs, quizzes) the user has actually added.
+    var submissionDates = STATE.assessments
+      .filter(function (a) { return a.category !== "exam"; })
+      .map(function (a) { return new Date(a.due); })
+      .sort(function (x, y) { return y - x; });
+    if (submissionDates.length && today <= submissionDates[0]) {
+      html += '<span class="term-pill"><strong>' + daysBetween(today, submissionDates[0]) + '</strong> days to last submission</span>';
+    }
+
+    // "Days to exams" — the nearest upcoming assessment tagged as an exam.
+    // Add one in Assessments & Deadlines to make this pill appear; until
+    // then, prompt for it instead of just leaving the pill out.
+    var examDates = STATE.assessments
+      .filter(function (a) { return a.category === "exam"; })
+      .map(function (a) { return new Date(a.due); })
+      .sort(function (x, y) { return x - y; });
+    var nextExam = examDates.filter(function (d) { return d >= today; })[0];
+    if (nextExam) {
+      var toExam = daysBetween(today, nextExam);
+      html += '<span class="term-pill' + (toExam <= 14 ? ' accent' : '') + '"><strong>' + toExam + '</strong> days to exams</span>';
+    } else if (examDates.length) {
+      html += '<span class="term-pill">Exams complete</span>';
+    } else {
+      html += '<button type="button" class="term-pill prompt" id="add-exam-prompt">+ Add an exam date</button>';
+    }
+
     document.getElementById("term-status").innerHTML = html;
+
+    var examPromptBtn = document.getElementById("add-exam-prompt");
+    if (examPromptBtn) examPromptBtn.addEventListener("click", function () { openAssessModal(null); });
   }
 
   /* ============ KPI strip ============ */
@@ -91,28 +118,31 @@
       .sort(function (x, y) { return x.d - y.d; });
     var nextDl = undone[0];
 
-    var weekNum = Math.min(TERM_WEEKS, Math.max(1, Math.floor(daysBetween(TERM_START, today) / 7) + 1));
-    var pct = Math.round(Math.min(1, weekNum / TERM_WEEKS) * 100);
-
     var tiles = [];
     tiles.push({
       label: "This week's hours", value: weekTotal.toFixed(1) + '<small>/ ' + weekTarget + 'h</small>',
       foot: allTotal.toFixed(1) + "h logged all term", cls: ""
     });
     tiles.push({
-      label: "Needs attention", value: String(attentionCount) + '<small>of ' + STATE.modules.length + '</small>',
-      foot: attentionCount > 0 ? "check the flagged cards below" : "everything's on pace",
-      cls: attentionCount >= 3 ? "crit" : (attentionCount > 0 ? "warn" : "")
-    });
-    tiles.push({
       label: "Next deadline", value: nextDl ? daysBetween(today, nextDl.d) + '<small>days</small>' : '—',
       foot: nextDl ? (nextDl.a.module + " " + nextDl.a.label) : "nothing scheduled",
       cls: nextDl && daysBetween(today, nextDl.d) <= 3 ? "crit" : (nextDl && daysBetween(today, nextDl.d) <= 7 ? "warn" : "")
     });
-    tiles.push({
-      label: "Term progress", value: pct + '<small>%</small>',
-      foot: "Week " + weekNum + " of " + TERM_WEEKS, cls: ""
-    });
+
+    var term = getTermInfo();
+    if (term.active) {
+      var weekNum = Math.min(term.weeks, Math.max(1, Math.floor(daysBetween(term.start, today) / 7) + 1));
+      var pct = Math.round(Math.min(1, weekNum / term.weeks) * 100);
+      tiles.push({
+        label: "Term progress", value: pct + '<small>%</small>',
+        foot: "Week " + weekNum + " of " + term.weeks, cls: ""
+      });
+    } else {
+      tiles.push({
+        label: "Term progress", value: "—",
+        foot: "Term starts " + fmtShort(term.start), cls: ""
+      });
+    }
 
     document.getElementById("kpi-strip").innerHTML = tiles.map(function (t) {
       return '<div class="kpi ' + t.cls + '"><div class="label">' + t.label + '</div><div class="value">' + t.value + '</div><div class="foot">' + t.foot + '</div></div>';
@@ -500,8 +530,24 @@
     grid.innerHTML = html;
   }
 
-  /* ============ Class management (popup: add / edit / delete) ============ */
+  /* ============ Class management (popup: add / edit / delete, weekly/biweekly recurrence) ============ */
   var classModalId = null;
+
+  function computeRecurrenceDates(startStr, repeat, untilStr) {
+    if (!startStr || !untilStr) return [];
+    var step = repeat === "biweekly" ? 14 : 7;
+    var start = new Date(startStr + "T00:00:00");
+    var until = new Date(untilStr + "T00:00:00");
+    if (until < start) return [];
+    var dates = [];
+    var cur = start;
+    while (cur <= until) {
+      dates.push(isoDate(cur));
+      cur = addDays(cur, step);
+    }
+    return dates;
+  }
+
   function openClassModal(id) {
     var titleEl = document.getElementById("class-modal-title");
     var dateEl = document.getElementById("cm-date");
@@ -510,10 +556,20 @@
     var startEl = document.getElementById("cm-start");
     var endEl = document.getElementById("cm-end");
     var roomEl = document.getElementById("cm-room");
+    var repeatField = document.getElementById("cm-repeat-field");
+    var repeatEl = document.getElementById("cm-repeat");
+    var untilField = document.getElementById("cm-until-field");
+    var untilEl = document.getElementById("cm-until");
     var saveBtn = document.getElementById("class-modal-save");
     var deleteBtn = document.getElementById("class-modal-delete");
+    var deleteSeriesBtn = document.getElementById("class-modal-delete-series");
 
     classModalId = id || null;
+    repeatEl.value = "none";
+    untilEl.value = "";
+    untilField.style.display = "none";
+    document.getElementById("cm-repeat-summary").textContent = "";
+
     if (id) {
       var s = STATE.sessions.filter(function (x) { return x.id === id; })[0];
       if (!s) return;
@@ -526,6 +582,8 @@
       roomEl.value = s.room || "";
       saveBtn.textContent = "Save changes";
       deleteBtn.style.display = "";
+      deleteSeriesBtn.style.display = s.series_id ? "" : "none";
+      repeatField.style.display = "none"; // recurrence only applies when creating
     } else {
       titleEl.textContent = "Add class";
       dateEl.value = isoDate(todayLocal());
@@ -536,6 +594,8 @@
       roomEl.value = "";
       saveBtn.textContent = "Add class";
       deleteBtn.style.display = "none";
+      deleteSeriesBtn.style.display = "none";
+      repeatField.style.display = "";
     }
     document.getElementById("class-modal-overlay").hidden = false;
   }
@@ -553,8 +613,40 @@
     var startEl = document.getElementById("cm-start");
     var endEl = document.getElementById("cm-end");
     var roomEl = document.getElementById("cm-room");
+    var repeatEl = document.getElementById("cm-repeat");
+    var untilField = document.getElementById("cm-until-field");
+    var untilEl = document.getElementById("cm-until");
+    var summaryEl = document.getElementById("cm-repeat-summary");
     var saveBtn = document.getElementById("class-modal-save");
     var deleteBtn = document.getElementById("class-modal-delete");
+    var deleteSeriesBtn = document.getElementById("class-modal-delete-series");
+
+    function updateRepeatSummary() {
+      if (repeatEl.value === "none") {
+        summaryEl.textContent = "";
+        return;
+      }
+      var dates = computeRecurrenceDates(dateEl.value, repeatEl.value, untilEl.value);
+      if (!dates.length) {
+        summaryEl.textContent = untilEl.value ? "Pick an “until” date on or after the start date." : "";
+        return;
+      }
+      var first = new Date(dates[0] + "T00:00:00");
+      var last = new Date(dates[dates.length - 1] + "T00:00:00");
+      summaryEl.textContent = "Creates " + dates.length + " classes, " + fmtShort(first) + " – " + fmtShort(last) +
+        (dates.length > 104 ? " (too many — narrow the range)" : "");
+    }
+
+    repeatEl.addEventListener("change", function () {
+      var on = repeatEl.value !== "none";
+      untilField.style.display = on ? "" : "none";
+      if (on && !untilEl.value && dateEl.value) {
+        untilEl.value = isoDate(addDays(new Date(dateEl.value + "T00:00:00"), 84)); // default: 12 weeks out
+      }
+      updateRepeatSummary();
+    });
+    dateEl.addEventListener("change", updateRepeatSummary);
+    untilEl.addEventListener("change", updateRepeatSummary);
 
     document.getElementById("cls-open-add").addEventListener("click", function () { openClassModal(null); });
     document.getElementById("class-modal-cancel").addEventListener("click", closeClassModal);
@@ -584,6 +676,13 @@
       }
       if (classModalId) {
         await api("PATCH", "/sessions/" + classModalId, { date: date, module: module, type: type, start: start, end: end, room: room });
+      } else if (repeatEl.value !== "none") {
+        var dates = computeRecurrenceDates(date, repeatEl.value, untilEl.value);
+        if (!dates.length || dates.length > 104) {
+          untilEl.focus();
+          return;
+        }
+        await api("POST", "/sessions/bulk", { module: module, type: type, start: start, end: end, room: room, dates: dates });
       } else {
         await api("POST", "/sessions", { date: date, module: module, type: type, start: start, end: end, room: room });
       }
@@ -596,6 +695,18 @@
       if (!classModalId) return;
       if (!confirm("Delete this class?")) return;
       await api("DELETE", "/sessions/" + classModalId);
+      closeClassModal();
+      await loadState();
+      renderAll();
+    });
+
+    deleteSeriesBtn.addEventListener("click", async function () {
+      if (!classModalId) return;
+      var s = STATE.sessions.filter(function (x) { return x.id === classModalId; })[0];
+      if (!s || !s.series_id) return;
+      var count = STATE.sessions.filter(function (x) { return x.series_id === s.series_id; }).length;
+      if (!confirm("Delete all " + count + " classes in this series?")) return;
+      await api("DELETE", "/sessions/series/" + s.series_id);
       closeClassModal();
       await loadState();
       renderAll();
@@ -1140,9 +1251,12 @@
       console.error(err);
       return;
     }
-    document.getElementById("db-note").textContent = "Backed by SQLite — data/study-ledger.db";
+    document.getElementById("db-note").textContent = "Created by df8";
     fetch("/api/auth/me").then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
-      if (j && j.username) document.getElementById("whoami").textContent = "Signed in as " + j.username;
+      if (j && j.username) {
+        document.getElementById("whoami").textContent = "Signed in as " + j.username;
+        document.getElementById("page-title").textContent = j.username + "'s Study Ledger";
+      }
     }).catch(function () {});
     initLogForm();
     initLogToggle();

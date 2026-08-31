@@ -21,9 +21,8 @@
 
   <header class="top">
     <div class="brand">
-      <span class="eyebrow">SUSS · JUL26 Term</span>
-      <h1>The Study Ledger</h1>
-      <div class="sub">Six modules, one term — logged, weighed, and watched. Now backed by a real database.</div>
+      <span class="eyebrow term-eyebrow">SUSS · JUL26 Term</span>
+      <h1 id="page-title">The Study Ledger</h1>
     </div>
     <div class="term-status" id="term-status"></div>
   </header>
@@ -179,9 +178,25 @@
           <label for="cm-room">Room</label>
           <input type="text" id="cm-room" placeholder="C.6.07" />
         </div>
+        <div class="field" id="cm-repeat-field">
+          <label for="cm-repeat">Repeats</label>
+          <select id="cm-repeat">
+            <option value="none">Does not repeat</option>
+            <option value="weekly">Weekly</option>
+            <option value="biweekly">Every 2 weeks</option>
+          </select>
+        </div>
+        <div class="field" id="cm-until-field" style="display:none;">
+          <label for="cm-until">Until</label>
+          <input type="date" id="cm-until" />
+          <div class="field-hint" id="cm-repeat-summary"></div>
+        </div>
       </div>
       <div class="modal-actions">
-        <button type="button" class="btn btn-danger" id="class-modal-delete" style="display:none;">Delete class</button>
+        <div class="modal-actions-left">
+          <button type="button" class="btn btn-danger" id="class-modal-delete" style="display:none;">Delete class</button>
+          <button type="button" class="btn btn-danger" id="class-modal-delete-series" style="display:none;">Delete series</button>
+        </div>
         <div class="modal-actions-right">
           <button type="button" class="btn btn-ghost" id="class-modal-cancel">Cancel</button>
           <button type="button" class="btn" id="class-modal-save">Add class</button>
@@ -328,12 +343,13 @@
   </section>
 
   <footer>
-    <span>Term runs 10 Aug – 30 Oct 2026 · Exams 9–21 Nov 2026 · Times in SGT.</span>
-    <span id="db-note">Connecting to local database…</span>
+    <span>Happy Studying</span>
+    <span id="db-note">The Study Ledger</span>
   </footer>
 
 </div>
 
+<script src="term-label.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
