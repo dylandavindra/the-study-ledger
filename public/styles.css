@@ -380,11 +380,11 @@
   /* ---------- Log form ---------- */
   .logpanel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); }
   .logform { display: grid; grid-template-columns: 1.3fr 1fr 0.8fr 1.6fr auto; gap: 10px; align-items: end; }
-  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
   .field label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-muted); font-weight: 600; }
   .field select, .field input {
     font-family: var(--font-body); font-size: 13.5px; padding: 9px 10px; border-radius: 8px; border: 1px solid var(--border);
-    background: var(--surface-2); color: var(--ink);
+    background: var(--surface-2); color: var(--ink); width: 100%; max-width: 100%; min-width: 0;
   }
   .field input[type="number"] { font-family: var(--font-mono); }
   .btn {
@@ -431,6 +431,14 @@
   @media (max-width: 760px) {
     .kpis { grid-template-columns: repeat(2, 1fr); }
     .logform { grid-template-columns: 1fr 1fr; }
-    .ttgrid { grid-template-columns: repeat(7, minmax(110px,1fr)); }
+    .ttgrid { grid-template-columns: 1fr; }
+    .ttday { min-height: 0; }
+    .ttday .none { padding: 2px 0; }
     .table-scroll, .chart-scroll { overflow-x: auto; }
+    .tt-week-nav { flex-wrap: wrap; justify-content: center; row-gap: 6px; }
+    .tt-week-nav .wk-label { min-width: 0; }
+  }
+
+  @media (max-width: 420px) {
+    .logform { grid-template-columns: 1fr; }
   }
