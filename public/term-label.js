@@ -58,10 +58,38 @@
 
   window.SussTerm = { currentTerm: currentTerm, semesterWindows: semesterWindows, labelFor: labelFor };
 
+  // ---------- Light/dark toggle ----------
+  // The stylesheet already defines both palettes (light by default, dark via
+  // prefers-color-scheme or an explicit data-theme="dark"). This just adds a
+  // manual override that beats the OS setting and remembers your choice.
+  function effectiveTheme() {
+    var saved = localStorage.getItem("theme");
+    if (saved === "light" || saved === "dark") return saved;
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+
+  function applyTheme(theme) {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("theme", theme);
+    var btn = document.getElementById("theme-toggle");
+    if (btn) {
+      btn.textContent = theme === "dark" ? "☀" : "☾";
+      btn.setAttribute("aria-label", theme === "dark" ? "Switch to light mode" : "Switch to dark mode");
+    }
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
     var label = labelFor(currentTerm(new Date()));
     document.querySelectorAll(".term-eyebrow").forEach(function (el) {
       el.textContent = "SUSS · " + label + " Term";
     });
+
+    applyTheme(effectiveTheme());
+    var toggleBtn = document.getElementById("theme-toggle");
+    if (toggleBtn) {
+      toggleBtn.addEventListener("click", function () {
+        applyTheme(effectiveTheme() === "dark" ? "light" : "dark");
+      });
+    }
   });
 })();
