@@ -12,7 +12,9 @@
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^11.3.0",
     "express": "^4.19.2",
-    "express-session": "^1.19.0"
+    "express-rate-limit": "^8.7.0",
+    "express-session": "^1.19.0",
+    "helmet": "^8.3.0"
   },
   "engines": {
     "node": ">=18"

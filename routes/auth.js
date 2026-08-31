@@ -26,8 +26,8 @@ router.post("/signup", (req, res) => {
   if (!USERNAME_RE.test(username)) {
     return res.status(400).json({ error: "Username must be 3-24 characters: letters, numbers, . _ -" });
   }
-  if (password.length < 6) {
-    return res.status(400).json({ error: "Password must be at least 6 characters" });
+  if (password.length < 8) {
+    return res.status(400).json({ error: "Password must be at least 8 characters" });
   }
 
   const existing = db.prepare("SELECT id FROM users WHERE username = ?").get(username);

@@ -46,13 +46,13 @@
   <form id="signup-form">
     <div class="field">
       <label for="signup-username">Username</label>
-      <input type="text" id="signup-username" autocomplete="username" autofocus />
+      <input type="text" id="signup-username" autocomplete="username" maxlength="24" autofocus />
       <div class="field-hint" id="username-hint">3-24 characters: letters, numbers, . _ -</div>
     </div>
     <div class="field">
       <label for="signup-password">Password</label>
       <input type="password" id="signup-password" autocomplete="new-password" />
-      <div class="field-hint">At least 6 characters</div>
+      <div class="field-hint">At least 8 characters</div>
     </div>
     <div class="field">
       <label for="signup-confirm">Confirm password</label>
@@ -116,8 +116,8 @@
       usernameEl.focus();
       return;
     }
-    if (passwordEl.value.length < 6) {
-      errorEl.textContent = "Password must be at least 6 characters.";
+    if (passwordEl.value.length < 8) {
+      errorEl.textContent = "Password must be at least 8 characters.";
       errorEl.classList.add("show");
       passwordEl.focus();
       return;

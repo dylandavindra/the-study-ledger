@@ -125,7 +125,7 @@
     });
     tiles.push({
       label: "Next deadline", value: nextDl ? daysBetween(today, nextDl.d) + '<small>days</small>' : '—',
-      foot: nextDl ? (nextDl.a.module + " " + nextDl.a.label) : "nothing scheduled",
+      foot: nextDl ? esc(nextDl.a.module + " " + nextDl.a.label) : "nothing scheduled",
       cls: nextDl && daysBetween(today, nextDl.d) <= 3 ? "crit" : (nextDl && daysBetween(today, nextDl.d) <= 7 ? "warn" : "")
     });
 
@@ -213,7 +213,7 @@
       if (firstBuild) {
         card.innerHTML =
           '<div class="mchead">' +
-            '<div><div class="mcode">' + mod.code + '</div><div class="mname" data-role="mname"></div></div>' +
+            '<div><div class="mcode">' + esc(mod.code) + '</div><div class="mname" data-role="mname"></div></div>' +
             '<div class="mchead-right">' +
               '<span class="status-pill ' + status + '" data-role="status">' + statusLabel + '</span>' +
               '<button type="button" class="card-edit-btn" data-role="edit-module-card" aria-label="Edit module">&#9998;</button>' +
@@ -297,10 +297,10 @@
         card.style.setProperty("--mc-soft", "var(--s" + mod.slot + "-soft)");
         card.innerHTML =
           '<div class="nchead">' +
-            '<div><div class="ncode">' + mod.code + '</div><div class="nname" data-role="nname"></div></div>' +
-            '<button type="button" class="drag-handle" data-role="drag-handle" draggable="true" aria-label="Drag to reorder ' + mod.code + '" title="Drag to reorder">⠿</button>' +
+            '<div><div class="ncode">' + esc(mod.code) + '</div><div class="nname" data-role="nname"></div></div>' +
+            '<button type="button" class="drag-handle" data-role="drag-handle" draggable="true" aria-label="Drag to reorder ' + esc(mod.code) + '" title="Drag to reorder">⠿</button>' +
           '</div>' +
-          '<textarea data-role="notes" placeholder="Notes for ' + mod.code + '…"></textarea>' +
+          '<textarea data-role="notes" placeholder="Notes for ' + esc(mod.code) + '…"></textarea>' +
           '<span class="note-saved" data-role="saved">Saved</span>';
 
         var textarea = card.querySelector('[data-role="notes"]');
@@ -488,7 +488,7 @@
       var sel = document.getElementById(id);
       if (!sel) return;
       var prev = sel.value;
-      sel.innerHTML = STATE.modules.map(function (m) { return '<option value="' + m.code + '">' + m.code + '</option>'; }).join("");
+      sel.innerHTML = STATE.modules.map(function (m) { return '<option value="' + esc(m.code) + '">' + esc(m.code) + '</option>'; }).join("");
       if (STATE.modules.some(function (m) { return m.code === prev; })) sel.value = prev;
     });
   }
@@ -519,9 +519,9 @@
           var mod = modByCode[s.module];
           html += '<div class="ttclass" data-id="' + s.id + '" style="--mc:var(--s' + mod.slot + ');--mc-soft:var(--s' + mod.slot + '-soft)">' +
             '<button type="button" class="ttedit" data-role="edit-session" aria-label="Edit class">&#9998;</button>' +
-            '<div class="tcode">' + s.module + '</div>' +
+            '<div class="tcode">' + esc(s.module) + '</div>' +
             '<div class="ttime">' + s.start + '–' + s.end + '</div>' +
-            '<div class="ttype">' + (s.type === "S" ? "Seminar" : "Lab") + (s.room ? ' · ' + s.room : '') + '</div>' +
+            '<div class="ttype">' + (s.type === "S" ? "Seminar" : "Lab") + (s.room ? ' · ' + esc(s.room) : '') + '</div>' +
           '</div>';
         });
       }
@@ -734,7 +734,7 @@
       var dueStr = due.toLocaleDateString("en-GB", { day: "numeric", month: "short" }) + ", " + due.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
       return '<tr class="' + (a.done ? "done" : "") + '" data-id="' + a.id + '">' +
         '<td><input type="checkbox" class="dl-check" ' + (a.done ? "checked" : "") + ' aria-label="Mark ' + esc(a.module + " " + a.label) + ' as submitted"/></td>' +
-        '<td><span class="modchip" style="--mc:var(--s' + mod.slot + ');--mc-soft:var(--s' + mod.slot + '-soft)">' + a.module + '</span></td>' +
+        '<td><span class="modchip" style="--mc:var(--s' + mod.slot + ');--mc-soft:var(--s' + mod.slot + '-soft)">' + esc(a.module) + '</span></td>' +
         '<td class="dl-label">' + esc(a.label) + '</td>' +
         '<td><span class="cat-tag ' + a.category + '">' + a.category + '</span></td>' +
         '<td>' + dueStr + '</td>' +
@@ -890,7 +890,7 @@
       var blocksHtml = blocks.map(function (b) { return '<span class="wb">' + esc(b.text) + '</span>'; }).join("");
 
       return '<div class="prepcard" style="--mc:var(--s' + mod.slot + ');--mc-soft:var(--s' + mod.slot + '-soft)">' +
-        '<div class="ph-title" data-id="' + a.id + '"><span class="modchip" style="--mc:var(--s' + mod.slot + ');--mc-soft:var(--s' + mod.slot + '-soft)">' + a.module + '</span>' +
+        '<div class="ph-title" data-id="' + a.id + '"><span class="modchip" style="--mc:var(--s' + mod.slot + ');--mc-soft:var(--s' + mod.slot + '-soft)">' + esc(a.module) + '</span>' +
           '<div class="ph-right"><span class="duein">' + (days >= 0 ? days + "d left" : "past due") + '</span>' +
             '<button type="button" class="card-edit-btn" data-role="edit-prep" aria-label="Edit deliverable">&#9998;</button>' +
           '</div>' +
@@ -1104,7 +1104,7 @@
       var d = new Date(l.date + "T00:00:00");
       return '<tr data-id="' + l.id + '">' +
         '<td class="ldate">' + fmtShort(d) + '</td>' +
-        '<td><span class="modchip" style="--mc:var(--s' + mod.slot + ');--mc-soft:var(--s' + mod.slot + '-soft)">' + l.module + '</span></td>' +
+        '<td><span class="modchip" style="--mc:var(--s' + mod.slot + ');--mc-soft:var(--s' + mod.slot + '-soft)">' + esc(l.module) + '</span></td>' +
         '<td class="lh">' + l.hours.toFixed(2).replace(/\.?0+$/, "") + 'h</td>' +
         '<td>' + esc(l.topic || "—") + '</td>' +
         '<td><button type="button" class="del-btn" data-role="del-log" aria-label="Delete entry">×</button></td>' +
@@ -1126,7 +1126,7 @@
 
   function initLogForm() {
     var sel = document.getElementById("log-module");
-    sel.innerHTML = STATE.modules.map(function (m) { return '<option value="' + m.code + '">' + m.code + '</option>'; }).join("");
+    sel.innerHTML = STATE.modules.map(function (m) { return '<option value="' + esc(m.code) + '">' + esc(m.code) + '</option>'; }).join("");
     document.getElementById("log-date").value = isoDate(todayLocal());
 
     document.getElementById("log-add").addEventListener("click", async function () {
@@ -1225,7 +1225,7 @@
     });
 
     document.getElementById("chart-legend").innerHTML = STATE.modules.map(function (m) {
-      return '<span class="li"><span class="sw" style="background:var(--s' + m.slot + ')"></span>' + m.code + '</span>';
+      return '<span class="li"><span class="sw" style="background:var(--s' + m.slot + ')"></span>' + esc(m.code) + '</span>';
     }).join("");
   }
 
