@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>The Study Ledger</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%93%3C/text%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="account-bar">
+    <span id="whoami"></span>
+    <button type="button" class="logout-link" id="logout-btn">Log out</button>
+  </div>
+
+  <header class="top">
+    <div class="brand">
+      <span class="eyebrow">SUSS · JUL26 Term</span>
+      <h1>The Study Ledger</h1>
+      <div class="sub">Six modules, one term — logged, weighed, and watched. Now backed by a real database.</div>
+    </div>
+    <div class="term-status" id="term-status"></div>
+  </header>
+
+  <section class="kpis" id="kpi-strip"></section>
+
+  <section id="sec-log">
+    <div class="sec-head">
+      <h2>Daily Study Log</h2>
+      <span class="hint">Log a session right after you study — the totals above update from this.</span>
+    </div>
+    <div class="logpanel">
+      <div class="logform">
+        <div class="field">
+          <label for="log-module">Module</label>
+          <select id="log-module"></select>
+        </div>
+        <div class="field">
+          <label for="log-date">Date</label>
+          <input type="date" id="log-date" />
+        </div>
+        <div class="field">
+          <label for="log-hours">Hours</label>
+          <input type="number" id="log-hours" min="0" step="0.25" placeholder="1.5" />
+        </div>
+        <div class="field">
+          <label for="log-topic">What you studied</label>
+          <input type="text" id="log-topic" placeholder="e.g. recursion practice, Ch.4 notes" />
+        </div>
+        <button class="btn" id="log-add" type="button">Add entry</button>
+      </div>
+      <div class="logtable-wrap">
+        <table class="logtable">
+          <thead>
+            <tr><th>Date</th><th>Module</th><th>Hours</th><th>Notes</th><th></th></tr>
+          </thead>
+          <tbody id="log-body"></tbody>
+        </table>
+        <div class="log-empty" id="log-empty" style="display:none;">No sessions logged yet — add your first one above.</div>
+        <div class="show-all-row">
+          <button type="button" class="btn-small" id="log-toggle-all" style="display:none;">Show all</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="sec-notes">
+    <div class="sec-head">
+      <h2>Notes</h2>
+      <span class="hint">Jot down anything for a module — saved automatically as you type.</span>
+    </div>
+    <div class="notegrid" id="note-grid"></div>
+  </section>
+
+  <section id="sec-modules">
+    <div class="sec-head">
+      <h2>Modules</h2>
+      <div class="sec-head-right">
+        <span class="hint">Click the dots to set how confident you feel — it drives the attention flag.</span>
+        <button class="btn" id="mod-open-add" type="button">+ Add module</button>
+      </div>
+    </div>
+    <div class="modgrid" id="module-grid"></div>
+  </section>
+
+  <div class="modal-overlay" id="module-modal-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="module-modal-title">
+      <div class="modal-head">
+        <h3 id="module-modal-title">Edit module</h3>
+        <button type="button" class="modal-close" id="module-modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label for="mm-code">Code</label>
+          <input type="text" id="mm-code" placeholder="ICT999" />
+        </div>
+        <div class="field">
+          <label for="mm-name">Name</label>
+          <input type="text" id="mm-name" placeholder="Module name" />
+        </div>
+        <div class="field">
+          <label for="mm-target">Weekly target (h)</label>
+          <input type="number" id="mm-target" min="0" step="0.5" placeholder="4" />
+        </div>
+        <div class="field">
+          <label for="mm-confidence">Confidence</label>
+          <select id="mm-confidence">
+            <option value="1">1 — struggling</option>
+            <option value="2">2</option>
+            <option value="3">3 — okay</option>
+            <option value="4">4</option>
+            <option value="5">5 — confident</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-danger" id="module-modal-delete" style="display:none;">Delete module</button>
+        <div class="modal-actions-right">
+          <button type="button" class="btn btn-ghost" id="module-modal-cancel">Cancel</button>
+          <button type="button" class="btn" id="module-modal-save">Add module</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section id="sec-timetable">
+    <div class="sec-head">
+      <h2>Class Timetable</h2>
+      <div class="sec-head-right">
+        <div class="tt-week-nav">
+          <button id="wk-prev" type="button">&larr; prev</button>
+          <span class="wk-label" id="wk-label"></span>
+          <button id="wk-next" type="button">next &rarr;</button>
+          <button id="wk-today" type="button">this week</button>
+        </div>
+        <button class="btn" id="cls-open-add" type="button">+ Add class</button>
+      </div>
+    </div>
+    <div class="ttgrid" id="tt-grid"></div>
+  </section>
+
+  <div class="modal-overlay" id="class-modal-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="class-modal-title">
+      <div class="modal-head">
+        <h3 id="class-modal-title">Edit class</h3>
+        <button type="button" class="modal-close" id="class-modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label for="cm-date">Date</label>
+          <input type="date" id="cm-date" />
+        </div>
+        <div class="field">
+          <label for="cm-module">Module</label>
+          <select id="cm-module"></select>
+        </div>
+        <div class="field">
+          <label for="cm-type">Type</label>
+          <select id="cm-type">
+            <option value="S">Seminar</option>
+            <option value="L">Lab</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="cm-start">Start</label>
+          <input type="time" id="cm-start" />
+        </div>
+        <div class="field">
+          <label for="cm-end">End</label>
+          <input type="time" id="cm-end" />
+        </div>
+        <div class="field">
+          <label for="cm-room">Room</label>
+          <input type="text" id="cm-room" placeholder="C.6.07" />
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-danger" id="class-modal-delete" style="display:none;">Delete class</button>
+        <div class="modal-actions-right">
+          <button type="button" class="btn btn-ghost" id="class-modal-cancel">Cancel</button>
+          <button type="button" class="btn" id="class-modal-save">Add class</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section id="sec-deadlines">
+    <div class="sec-head">
+      <h2>Assessments &amp; Deadlines</h2>
+      <div class="sec-head-right">
+        <span class="hint">Tick off once submitted — sorted by what's due soonest.</span>
+        <button class="btn" id="as-open-add" type="button">+ Add assessment</button>
+      </div>
+    </div>
+    <div class="table-scroll">
+      <table class="deadline-table">
+        <thead>
+          <tr><th></th><th>Module</th><th>Item</th><th>Type</th><th>Due</th><th>Countdown</th><th></th></tr>
+        </thead>
+        <tbody id="deadline-body"></tbody>
+      </table>
+    </div>
+    <div class="show-all-row">
+      <button type="button" class="btn-small" id="deadline-toggle-all" style="display:none;">Show all</button>
+    </div>
+  </section>
+
+  <div class="modal-overlay" id="assess-modal-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="assess-modal-title">
+      <div class="modal-head">
+        <h3 id="assess-modal-title">Edit assessment</h3>
+        <button type="button" class="modal-close" id="assess-modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label for="am-module">Module</label>
+          <select id="am-module"></select>
+        </div>
+        <div class="field">
+          <label for="am-label">Item</label>
+          <input type="text" id="am-label" placeholder="TMA01" />
+        </div>
+        <div class="field">
+          <label for="am-due">Due</label>
+          <input type="datetime-local" id="am-due" />
+        </div>
+        <div class="field">
+          <label for="am-category">Type</label>
+          <select id="am-category">
+            <option value="quiz">Quiz</option>
+            <option value="tma">TMA</option>
+            <option value="gba">GBA</option>
+            <option value="exam">Exam</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-danger" id="assess-modal-delete" style="display:none;">Delete assessment</button>
+        <div class="modal-actions-right">
+          <button type="button" class="btn btn-ghost" id="assess-modal-cancel">Cancel</button>
+          <button type="button" class="btn" id="assess-modal-save">Add assessment</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section id="sec-prep">
+    <div class="sec-head">
+      <h2>TMA / GBA Prep Plan</h2>
+      <div class="sec-head-right">
+        <span class="hint">A weekly rhythm for the big deliverables, working backward from each due date.</span>
+        <button class="btn" id="prep-open-add" type="button">+ Add deliverable</button>
+      </div>
+    </div>
+    <div class="prepgrid" id="prep-grid"></div>
+  </section>
+
+  <div class="modal-overlay" id="prep-modal-overlay" hidden>
+    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="prep-modal-title">
+      <div class="modal-head">
+        <h3 id="prep-modal-title">Edit deliverable</h3>
+        <button type="button" class="modal-close" id="prep-modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label for="pm-module">Module</label>
+          <select id="pm-module"></select>
+        </div>
+        <div class="field">
+          <label for="pm-label">Item</label>
+          <input type="text" id="pm-label" placeholder="TMA01" />
+        </div>
+        <div class="field">
+          <label for="pm-due">Due</label>
+          <input type="datetime-local" id="pm-due" />
+        </div>
+        <div class="field">
+          <label for="pm-category">Type</label>
+          <select id="pm-category">
+            <option value="tma">TMA</option>
+            <option value="gba">GBA</option>
+          </select>
+        </div>
+
+        <div class="modal-subsection" id="pm-steps-section">
+          <div class="modal-subhead">
+            <span>Prep steps</span>
+            <button type="button" class="btn-small" id="pm-add-step">+ Add step</button>
+          </div>
+          <div class="pm-list" id="pm-steps-list"></div>
+        </div>
+
+        <div class="modal-subsection" id="pm-blocks-section">
+          <div class="modal-subhead">
+            <span>Work blocks</span>
+            <button type="button" class="btn-small" id="pm-add-block">+ Add block</button>
+          </div>
+          <div class="pm-list" id="pm-blocks-list"></div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-danger" id="prep-modal-delete" style="display:none;">Delete deliverable</button>
+        <div class="modal-actions-right">
+          <button type="button" class="btn btn-ghost" id="prep-modal-cancel">Cancel</button>
+          <button type="button" class="btn" id="prep-modal-save">Add deliverable</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section id="sec-chart">
+    <div class="sec-head">
+      <h2>Last 14 Days</h2>
+      <span class="hint">Daily hours, coloured by module.</span>
+    </div>
+    <div class="chartpanel">
+      <div class="legend" id="chart-legend"></div>
+      <div class="chart-scroll">
+        <svg id="chart-svg" width="960" height="220" role="img" aria-label="Study hours per day, last 14 days, by module"></svg>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Term runs 10 Aug – 30 Oct 2026 · Exams 9–21 Nov 2026 · Times in SGT.</span>
+    <span id="db-note">Connecting to local database…</span>
+  </footer>
+
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

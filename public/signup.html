@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Sign up — The Study Ledger</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%93%3C/text%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
+  .login-card {
+    width: 100%; max-width: 360px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 32px; box-shadow: var(--shadow);
+  }
+  .login-card .brand { margin-bottom: 22px; }
+  .login-card form { display: flex; flex-direction: column; gap: 14px; }
+  .login-card .btn { width: 100%; margin-top: 2px; }
+  .login-error {
+    font-size: 12.5px; color: var(--critical); background: var(--critical-soft); border-radius: 8px;
+    padding: 8px 10px; display: none;
+  }
+  .login-error.show { display: block; }
+  .auth-switch { text-align: center; font-size: 13px; color: var(--ink-muted); margin-top: 18px; }
+  .auth-switch a { font-weight: 600; }
+  .field-hint { font-size: 11.5px; margin-top: 4px; }
+  .field-hint.ok { color: var(--good); }
+  .field-hint.bad { color: var(--critical); }
+  .field input.bad { border-color: var(--critical); }
+  .field input.ok { border-color: var(--good); }
+</style>
+</head>
+<body>
+
+<div class="login-card">
+  <div class="brand">
+    <span class="eyebrow">SUSS · JUL26 Term</span>
+    <h1 style="font-size:26px;">The Study Ledger</h1>
+    <div class="sub">Create your own study ledger.</div>
+  </div>
+
+  <div class="login-error" id="signup-error">Something went wrong.</div>
+
+  <form id="signup-form">
+    <div class="field">
+      <label for="signup-username">Username</label>
+      <input type="text" id="signup-username" autocomplete="username" autofocus />
+      <div class="field-hint" id="username-hint">3-24 characters: letters, numbers, . _ -</div>
+    </div>
+    <div class="field">
+      <label for="signup-password">Password</label>
+      <input type="password" id="signup-password" autocomplete="new-password" />
+      <div class="field-hint">At least 6 characters</div>
+    </div>
+    <div class="field">
+      <label for="signup-confirm">Confirm password</label>
+      <input type="password" id="signup-confirm" autocomplete="new-password" />
+    </div>
+    <button class="btn" id="signup-submit" type="submit">Create account</button>
+  </form>
+
+  <div class="auth-switch">Already have an account? <a href="/login.html">Sign in</a></div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var form = document.getElementById("signup-form");
+  var usernameEl = document.getElementById("signup-username");
+  var passwordEl = document.getElementById("signup-password");
+  var confirmEl = document.getElementById("signup-confirm");
+  var errorEl = document.getElementById("signup-error");
+  var submitBtn = document.getElementById("signup-submit");
+  var usernameHint = document.getElementById("username-hint");
+
+  var usernameAvailable = null;
+
+  async function checkUsername() {
+    var value = usernameEl.value.trim();
+    if (!value) {
+      usernameHint.textContent = "3-24 characters: letters, numbers, . _ -";
+      usernameHint.className = "field-hint";
+      usernameEl.className = "";
+      usernameAvailable = null;
+      return;
+    }
+    try {
+      var res = await fetch("/api/auth/check-username?u=" + encodeURIComponent(value));
+      var j = await res.json();
+      usernameAvailable = j.available;
+      if (j.available) {
+        usernameHint.textContent = "Username is available";
+        usernameHint.className = "field-hint ok";
+        usernameEl.className = "ok";
+      } else {
+        usernameHint.textContent = j.reason || "That username is already taken";
+        usernameHint.className = "field-hint bad";
+        usernameEl.className = "bad";
+      }
+    } catch (err) {
+      usernameAvailable = null;
+    }
+  }
+
+  usernameEl.addEventListener("blur", checkUsername);
+
+  form.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    errorEl.classList.remove("show");
+
+    if (usernameAvailable === false) {
+      errorEl.textContent = "That username is already taken — try another.";
+      errorEl.classList.add("show");
+      usernameEl.focus();
+      return;
+    }
+    if (passwordEl.value.length < 6) {
+      errorEl.textContent = "Password must be at least 6 characters.";
+      errorEl.classList.add("show");
+      passwordEl.focus();
+      return;
+    }
+    if (passwordEl.value !== confirmEl.value) {
+      errorEl.textContent = "Passwords don't match.";
+      errorEl.classList.add("show");
+      confirmEl.value = "";
+      confirmEl.focus();
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Creating account…";
+    try {
+      var res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: usernameEl.value, password: passwordEl.value })
+      });
+      if (!res.ok) {
+        var j = await res.json().catch(function () { return {}; });
+        throw new Error(j.error || "Could not create account");
+      }
+      window.location.href = "/";
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.classList.add("show");
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Create account";
+      if (/username/i.test(err.message)) {
+        usernameHint.textContent = err.message;
+        usernameHint.className = "field-hint bad";
+        usernameEl.className = "bad";
+        usernameAvailable = false;
+      }
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

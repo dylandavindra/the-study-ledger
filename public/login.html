@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Sign in — The Study Ledger</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%93%3C/text%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
+  .login-card {
+    width: 100%; max-width: 360px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 32px; box-shadow: var(--shadow);
+  }
+  .login-card .brand { margin-bottom: 22px; }
+  .login-card form { display: flex; flex-direction: column; gap: 14px; }
+  .login-card .btn { width: 100%; margin-top: 2px; }
+  .login-error {
+    font-size: 12.5px; color: var(--critical); background: var(--critical-soft); border-radius: 8px;
+    padding: 8px 10px; display: none;
+  }
+  .login-error.show { display: block; }
+  .auth-switch { text-align: center; font-size: 13px; color: var(--ink-muted); margin-top: 18px; }
+  .auth-switch a { font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="login-card">
+  <div class="brand">
+    <span class="eyebrow">SUSS · JUL26 Term</span>
+    <h1 style="font-size:26px;">The Study Ledger</h1>
+    <div class="sub">Sign in to your study ledger.</div>
+  </div>
+
+  <div class="login-error" id="login-error">Incorrect username or password.</div>
+
+  <form id="login-form">
+    <div class="field">
+      <label for="login-username">Username</label>
+      <input type="text" id="login-username" autocomplete="username" autofocus />
+    </div>
+    <div class="field">
+      <label for="login-password">Password</label>
+      <input type="password" id="login-password" autocomplete="current-password" />
+    </div>
+    <button class="btn" id="login-submit" type="submit">Sign in</button>
+  </form>
+
+  <div class="auth-switch">New here? <a href="/signup.html">Create an account</a></div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var form = document.getElementById("login-form");
+  var usernameEl = document.getElementById("login-username");
+  var passwordEl = document.getElementById("login-password");
+  var errorEl = document.getElementById("login-error");
+  var submitBtn = document.getElementById("login-submit");
+
+  form.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    errorEl.classList.remove("show");
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Signing in…";
+    try {
+      var res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: usernameEl.value, password: passwordEl.value })
+      });
+      if (!res.ok) {
+        var j = await res.json().catch(function () { return {}; });
+        throw new Error(j.error || "Incorrect username or password");
+      }
+      window.location.href = "/";
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.classList.add("show");
+      passwordEl.value = "";
+      passwordEl.focus();
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Sign in";
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
