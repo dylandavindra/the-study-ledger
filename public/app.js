@@ -1254,7 +1254,6 @@
     document.getElementById("db-note").textContent = "Created by df8";
     fetch("/api/auth/me").then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
       if (j && j.username) {
-        document.getElementById("whoami").textContent = "Signed in as " + j.username;
         document.getElementById("page-title").textContent = j.username + "'s Study Ledger";
       }
     }).catch(function () {});
