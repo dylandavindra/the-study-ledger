@@ -39,6 +39,8 @@ router.post("/signup", (req, res) => {
   const info = db
     .prepare("INSERT INTO users (username, password_hash) VALUES (?, ?)")
     .run(username, passwordHash);
+  // Signing up logs you straight in, so it counts as visit #1.
+  db.prepare("UPDATE users SET last_login_at = datetime('now'), login_count = 1 WHERE id = ?").run(info.lastInsertRowid);
 
   req.session.userId = info.lastInsertRowid;
   req.session.username = username;
@@ -53,6 +55,8 @@ router.post("/login", (req, res) => {
   if (!user || !bcrypt.compareSync(password, user.password_hash)) {
     return res.status(401).json({ error: "Incorrect username or password" });
   }
+
+  db.prepare("UPDATE users SET last_login_at = datetime('now'), login_count = login_count + 1 WHERE id = ?").run(user.id);
 
   req.session.userId = user.id;
   req.session.username = user.username;

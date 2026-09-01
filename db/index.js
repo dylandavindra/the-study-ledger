@@ -22,7 +22,9 @@ db.exec(`
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     username      TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+    last_login_at TEXT,
+    login_count   INTEGER NOT NULL DEFAULT 0
   );
 
   CREATE TABLE IF NOT EXISTS modules (
@@ -204,6 +206,16 @@ if (!hasUserId) {
 const sessionColumns = db.prepare("PRAGMA table_info(sessions)").all().map((c) => c.name);
 if (!sessionColumns.includes("series_id")) {
   db.exec("ALTER TABLE sessions ADD COLUMN series_id TEXT");
+}
+
+// Migration: track login activity so it's possible to tell who's actually
+// still using the app versus who signed up once and never came back.
+const userColumns = db.prepare("PRAGMA table_info(users)").all().map((c) => c.name);
+if (!userColumns.includes("last_login_at")) {
+  db.exec("ALTER TABLE users ADD COLUMN last_login_at TEXT");
+}
+if (!userColumns.includes("login_count")) {
+  db.exec("ALTER TABLE users ADD COLUMN login_count INTEGER NOT NULL DEFAULT 0");
 }
 
 db.exec(`
