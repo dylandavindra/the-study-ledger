@@ -437,15 +437,14 @@
 
   @media (max-width: 760px) {
     .kpis { grid-template-columns: repeat(2, 1fr); }
-    .logform { grid-template-columns: 1fr 1fr; }
+    /* Single column: native date inputs render at inconsistent minimum
+       widths across mobile browsers, so a shared 2-column row with Module
+       can't reliably avoid overflow. Full card width sidesteps that. */
+    .logform { grid-template-columns: 1fr; }
     .ttgrid { grid-template-columns: 1fr; }
     .ttday { min-height: 0; }
     .ttday .none { padding: 2px 0; }
     .table-scroll, .chart-scroll { overflow-x: auto; }
     .tt-week-nav { flex-wrap: wrap; justify-content: center; row-gap: 6px; }
     .tt-week-nav .wk-label { min-width: 0; }
-  }
-
-  @media (max-width: 420px) {
-    .logform { grid-template-columns: 1fr; }
   }
