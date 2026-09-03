@@ -5,6 +5,7 @@
   var STATE = { modules: [], sessions: [], assessments: [], logs: [], prepItems: [], term: null };
   var modByCode = {};
   var CENSOR = localStorage.getItem("censorDeadlines") === "1";
+  var ME = null;
 
   /* ============ API helper ============ */
   async function api(method, path, body) {
@@ -488,6 +489,95 @@
       if (!confirm("Delete module " + moduleModalCode + "? This also removes its classes, assessments, and logged hours.")) return;
       await api("DELETE", "/modules/" + moduleModalCode);
       closeModuleModal();
+      await loadState();
+      renderAll();
+    });
+  }
+
+  /* ============ Settings (account info, backup export, clear-all) ============ */
+  function fmtLongDate(d) { return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); }
+
+  function initSettingsModal() {
+    var overlay = document.getElementById("settings-modal-overlay");
+    var openBtn = document.getElementById("settings-open");
+    var closeBtn = document.getElementById("settings-modal-close");
+    var doneBtn = document.getElementById("settings-modal-done");
+    var logoutBtn = document.getElementById("settings-logout");
+    var exportBtn = document.getElementById("settings-export");
+    var clearOpenBtn = document.getElementById("settings-clear-open");
+    var clearPanel = document.getElementById("settings-clear-confirm");
+    var clearInput = document.getElementById("settings-clear-input");
+    var clearConfirmBtn = document.getElementById("settings-clear-confirm-btn");
+    var clearCancelBtn = document.getElementById("settings-clear-cancel");
+
+    function resetClearPanel() {
+      clearPanel.hidden = true;
+      clearOpenBtn.style.display = "";
+      clearInput.value = "";
+      clearConfirmBtn.disabled = true;
+    }
+
+    function openSettings() {
+      document.getElementById("settings-account-line").textContent = ME ? ("Signed in as " + ME.username) : "";
+      document.getElementById("settings-stats-line").textContent = (ME && ME.createdAt)
+        ? ("Member since " + fmtLongDate(new Date(ME.createdAt)) + " · logged in " + ME.loginCount + (ME.loginCount === 1 ? " time" : " times"))
+        : "";
+      resetClearPanel();
+      overlay.hidden = false;
+    }
+    function closeSettings() {
+      overlay.hidden = true;
+      resetClearPanel();
+    }
+
+    openBtn.addEventListener("click", openSettings);
+    closeBtn.addEventListener("click", closeSettings);
+    doneBtn.addEventListener("click", closeSettings);
+    overlay.addEventListener("click", function (e) { if (e.target === overlay) closeSettings(); });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && !overlay.hidden) closeSettings();
+    });
+
+    logoutBtn.addEventListener("click", async function () {
+      await fetch("/api/auth/logout", { method: "POST" });
+      window.location.href = "/login.html";
+    });
+
+    exportBtn.addEventListener("click", function () {
+      var payload = {
+        exportedAt: new Date().toISOString(),
+        username: ME ? ME.username : undefined,
+        modules: STATE.modules,
+        sessions: STATE.sessions,
+        assessments: STATE.assessments,
+        logs: STATE.logs,
+        prepItems: STATE.prepItems
+      };
+      var blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = "study-ledger-backup-" + isoDate(todayLocal()) + ".json";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
+    clearOpenBtn.addEventListener("click", function () {
+      clearOpenBtn.style.display = "none";
+      clearPanel.hidden = false;
+      clearInput.focus();
+    });
+    clearCancelBtn.addEventListener("click", resetClearPanel);
+    clearInput.addEventListener("input", function () {
+      clearConfirmBtn.disabled = clearInput.value.trim() !== "DELETE";
+    });
+    clearConfirmBtn.addEventListener("click", async function () {
+      if (clearInput.value.trim() !== "DELETE") return;
+      clearConfirmBtn.disabled = true;
+      await api("DELETE", "/account/data");
+      closeSettings();
       await loadState();
       renderAll();
     });
@@ -1265,6 +1355,7 @@
     document.getElementById("db-note").textContent = "Created by df8";
     fetch("/api/auth/me").then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
       if (j && j.username) {
+        ME = j;
         document.getElementById("page-title").textContent = j.username + "'s Study Ledger";
       }
     }).catch(function () {});
@@ -1276,13 +1367,10 @@
     initAssessModal();
     initDeadlineToggle();
     initPrepModal();
+    initSettingsModal();
     document.getElementById("wk-prev").addEventListener("click", function () { ttWeekOffset--; renderTimetable(); });
     document.getElementById("wk-next").addEventListener("click", function () { ttWeekOffset++; renderTimetable(); });
     document.getElementById("wk-today").addEventListener("click", function () { ttWeekOffset = 0; renderTimetable(); });
-    document.getElementById("logout-btn").addEventListener("click", async function () {
-      await fetch("/api/auth/logout", { method: "POST" });
-      window.location.href = "/login.html";
-    });
     updateCensorButton();
     document.getElementById("censor-toggle").addEventListener("click", function () {
       CENSOR = !CENSOR;

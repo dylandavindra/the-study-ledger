@@ -73,7 +73,8 @@ router.get("/me", (req, res) => {
   if (!req.session || !req.session.userId) {
     return res.status(401).json({ error: "Not authenticated" });
   }
-  res.json({ username: req.session.username });
+  const user = db.prepare("SELECT username, created_at, login_count FROM users WHERE id = ?").get(req.session.userId);
+  res.json({ username: user.username, createdAt: user.created_at, loginCount: user.login_count });
 });
 
 module.exports = router;

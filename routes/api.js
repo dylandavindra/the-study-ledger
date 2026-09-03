@@ -348,4 +348,20 @@ router.delete("/logs/:id", (req, res) => {
   res.status(204).end();
 });
 
+/* ---------- Account: wipe every module/class/assessment/log ----------
+   Meant for resetting the ledger between semesters — the account and
+   login history are left untouched. */
+router.delete("/account/data", (req, res) => {
+  const userId = req.session.userId;
+  const clear = db.transaction(() => {
+    db.prepare("DELETE FROM prep_items WHERE assessment_id IN (SELECT id FROM assessments WHERE user_id = ?)").run(userId);
+    db.prepare("DELETE FROM assessments WHERE user_id = ?").run(userId);
+    db.prepare("DELETE FROM sessions WHERE user_id = ?").run(userId);
+    db.prepare("DELETE FROM logs WHERE user_id = ?").run(userId);
+    db.prepare("DELETE FROM modules WHERE user_id = ?").run(userId);
+  });
+  clear();
+  res.status(204).end();
+});
+
 module.exports = router;
