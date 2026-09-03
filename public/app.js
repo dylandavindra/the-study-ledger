@@ -4,6 +4,7 @@
   /* ============ State (mirrors the SQLite database) ============ */
   var STATE = { modules: [], sessions: [], assessments: [], logs: [], prepItems: [], term: null };
   var modByCode = {};
+  var CENSOR = localStorage.getItem("censorDeadlines") === "1";
 
   /* ============ API helper ============ */
   async function api(method, path, body) {
@@ -55,6 +56,14 @@
     return { start: term.start, end: term.end, weeks: weeks, active: term.active };
   }
 
+  function updateCensorButton() {
+    var btn = document.getElementById("censor-toggle");
+    if (!btn) return;
+    btn.textContent = CENSOR ? "🙈" : "👁";
+    btn.setAttribute("aria-label", CENSOR ? "Show day counts" : "Hide day counts");
+    btn.setAttribute("title", CENSOR ? "Show day counts" : "Hide day counts");
+  }
+
   /* ============ Header / term status ============ */
   function renderTermStatus() {
     var today = todayLocal();
@@ -74,7 +83,8 @@
       .map(function (a) { return new Date(a.due); })
       .sort(function (x, y) { return y - x; });
     if (submissionDates.length && today <= submissionDates[0]) {
-      html += '<span class="term-pill"><strong>' + daysBetween(today, submissionDates[0]) + '</strong> days to last submission</span>';
+      var subDays = CENSOR ? "&bull;&bull;&bull;" : daysBetween(today, submissionDates[0]);
+      html += '<span class="term-pill"><strong>' + subDays + '</strong> days to last submission</span>';
     }
 
     // "Days to exams" — the nearest upcoming assessment tagged as an exam.
@@ -87,7 +97,8 @@
     var nextExam = examDates.filter(function (d) { return d >= today; })[0];
     if (nextExam) {
       var toExam = daysBetween(today, nextExam);
-      html += '<span class="term-pill' + (toExam <= 14 ? ' accent' : '') + '"><strong>' + toExam + '</strong> days to exams</span>';
+      var examDays = CENSOR ? "&bull;&bull;&bull;" : toExam;
+      html += '<span class="term-pill' + (!CENSOR && toExam <= 14 ? ' accent' : '') + '"><strong>' + examDays + '</strong> days to exams</span>';
     } else if (examDates.length) {
       html += '<span class="term-pill">Exams complete</span>';
     } else {
@@ -1271,6 +1282,13 @@
     document.getElementById("logout-btn").addEventListener("click", async function () {
       await fetch("/api/auth/logout", { method: "POST" });
       window.location.href = "/login.html";
+    });
+    updateCensorButton();
+    document.getElementById("censor-toggle").addEventListener("click", function () {
+      CENSOR = !CENSOR;
+      localStorage.setItem("censorDeadlines", CENSOR ? "1" : "0");
+      updateCensorButton();
+      renderTermStatus();
     });
     renderAll();
   });
