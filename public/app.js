@@ -2,7 +2,7 @@
   "use strict";
 
   /* ============ State (mirrors the SQLite database) ============ */
-  var STATE = { modules: [], sessions: [], assessments: [], logs: [], prepItems: [], term: null };
+  var STATE = { modules: [], sessions: [], assessments: [], logs: [], prepItems: [], noteItems: [], term: null };
   var modByCode = {};
   var CENSOR = localStorage.getItem("censorDeadlines") === "1";
   var ME = null;
@@ -313,7 +313,11 @@
             '<button type="button" class="drag-handle" data-role="drag-handle" draggable="true" aria-label="Drag to reorder ' + esc(mod.code) + '" title="Drag to reorder">⠿</button>' +
           '</div>' +
           '<textarea data-role="notes" placeholder="Notes for ' + esc(mod.code) + '…"></textarea>' +
-          '<span class="note-saved" data-role="saved">Saved</span>';
+          '<span class="note-saved" data-role="saved">Saved</span>' +
+          '<div class="notecard-tasks">' +
+            '<div class="modal-subhead"><span>Tasks</span><button type="button" class="btn-small" data-role="nc-add">+ Add task</button></div>' +
+            '<div class="pm-list" data-role="nc-list"></div>' +
+          '</div>';
 
         var textarea = card.querySelector('[data-role="notes"]');
         var savedTag = card.querySelector('[data-role="saved"]');
@@ -326,6 +330,36 @@
           clearTimeout(saveTimer);
           saveTimer = setTimeout(function () { savedTag.classList.remove("show"); }, 1500);
         });
+
+        card.querySelector('[data-role="nc-add"]').addEventListener("click", async function () {
+          await api("POST", "/note-items", { module: mod.code, text: "New task" });
+          await loadState();
+          renderNotes();
+        });
+
+        card.querySelector('[data-role="nc-list"]').addEventListener("change", async function (e) {
+          var row = e.target.closest(".nc-row");
+          if (!row) return;
+          if (e.target.classList.contains("nc-done")) {
+            await api("PATCH", "/note-items/" + row.dataset.id, { done: e.target.checked });
+          } else if (e.target.classList.contains("nc-text")) {
+            var text = e.target.value.trim();
+            if (!text) { e.target.focus(); return; }
+            await api("PATCH", "/note-items/" + row.dataset.id, { text: text });
+          } else {
+            return;
+          }
+          await loadState();
+          renderNotes();
+        });
+
+        card.querySelector('[data-role="nc-list"]').addEventListener("click", async function (e) {
+          var delBtn = e.target.closest(".nc-del");
+          if (!delBtn) return;
+          await api("DELETE", "/note-items/" + delBtn.closest(".nc-row").dataset.id);
+          await loadState();
+          renderNotes();
+        });
       }
 
       card.querySelector('[data-role="nname"]').textContent = mod.name;
@@ -333,6 +367,16 @@
       if (document.activeElement !== textareaEl) {
         textareaEl.value = mod.notes || "";
       }
+
+      var items = STATE.noteItems.filter(function (n) { return n.module_id === mod.id; })
+        .sort(function (a, b) { return a.sort_order - b.sort_order; });
+      card.querySelector('[data-role="nc-list"]').innerHTML = items.map(function (n) {
+        return '<div class="pm-row nc-row' + (n.done ? " done" : "") + '" data-id="' + n.id + '">' +
+          '<input type="checkbox" class="nc-done" ' + (n.done ? "checked" : "") + ' aria-label="Mark task done" />' +
+          '<input type="text" class="nc-text" value="' + esc(n.text) + '" />' +
+          '<button type="button" class="del-btn nc-del" aria-label="Delete task">&times;</button>' +
+        '</div>';
+      }).join("") || '<div class="pm-empty">No tasks yet.</div>';
 
       // Re-append in note_order sequence every render, so drag reorders (and
       // any later PATCH from elsewhere) always converge on the right layout.

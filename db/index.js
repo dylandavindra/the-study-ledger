@@ -80,6 +80,14 @@ db.exec(`
     done          INTEGER NOT NULL DEFAULT 0,
     sort_order    INTEGER NOT NULL DEFAULT 0
   );
+
+  CREATE TABLE IF NOT EXISTS note_items (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    module_id  INTEGER NOT NULL REFERENCES modules(id),
+    text       TEXT NOT NULL,
+    done       INTEGER NOT NULL DEFAULT 0,
+    sort_order INTEGER NOT NULL DEFAULT 0
+  );
 `);
 
 // ---------- Legacy column migrations (pre-multi-tenant databases) ----------
@@ -228,6 +236,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_logs_user ON logs(user_id);
   CREATE INDEX IF NOT EXISTS idx_logs_date ON logs(date);
   CREATE INDEX IF NOT EXISTS idx_prep_items_assessment ON prep_items(assessment_id);
+  CREATE INDEX IF NOT EXISTS idx_note_items_module ON note_items(module_id);
 `);
 
 // Every TMA/GBA deliverable gets a default 4-step prep timeline and two

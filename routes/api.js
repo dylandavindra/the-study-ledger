@@ -19,7 +19,15 @@ router.get("/state", (req, res) => {
        ORDER BY p.assessment_id, p.kind, p.sort_order, p.id`
     )
     .all(userId);
-  res.json({ modules, sessions, assessments, logs, prepItems, term: TERM });
+  const noteItems = db
+    .prepare(
+      `SELECT n.* FROM note_items n
+       JOIN modules m ON m.id = n.module_id
+       WHERE m.user_id = ?
+       ORDER BY n.module_id, n.sort_order, n.id`
+    )
+    .all(userId);
+  res.json({ modules, sessions, assessments, logs, prepItems, noteItems, term: TERM });
 });
 
 /* ---------- Modules: add a new module ---------- */
@@ -85,6 +93,10 @@ router.delete("/modules/:code", (req, res) => {
     db.prepare(
       `DELETE FROM prep_items WHERE assessment_id IN
        (SELECT id FROM assessments WHERE user_id = ? AND module = ?)`
+    ).run(userId, code);
+    db.prepare(
+      `DELETE FROM note_items WHERE module_id IN
+       (SELECT id FROM modules WHERE user_id = ? AND code = ?)`
     ).run(userId, code);
     db.prepare("DELETE FROM logs WHERE user_id = ? AND module = ?").run(userId, code);
     db.prepare("DELETE FROM sessions WHERE user_id = ? AND module = ?").run(userId, code);
@@ -324,6 +336,55 @@ router.delete("/prep-items/:id", (req, res) => {
   res.status(204).end();
 });
 
+/* ---------- Note checklist: per-module task lists ---------- */
+router.post("/note-items", (req, res) => {
+  const userId = req.session.userId;
+  const moduleCode = req.body.module;
+  const text = (req.body.text || "").trim();
+  if (!moduleCode || !text) {
+    return res.status(400).json({ error: "module and text are required" });
+  }
+  const mod = db.prepare("SELECT id FROM modules WHERE user_id = ? AND code = ?").get(userId, moduleCode);
+  if (!mod) return res.status(400).json({ error: "Unknown module code" });
+
+  const maxOrder = db.prepare("SELECT COALESCE(MAX(sort_order), -1) AS m FROM note_items WHERE module_id = ?").get(mod.id).m;
+  const info = db
+    .prepare("INSERT INTO note_items (module_id, text, done, sort_order) VALUES (?, ?, 0, ?)")
+    .run(mod.id, text, maxOrder + 1);
+  res.status(201).json(db.prepare("SELECT * FROM note_items WHERE id = ?").get(info.lastInsertRowid));
+});
+
+router.patch("/note-items/:id", (req, res) => {
+  const userId = req.session.userId;
+  const existing = db
+    .prepare(
+      `SELECT n.* FROM note_items n
+       JOIN modules m ON m.id = n.module_id
+       WHERE n.id = ? AND m.user_id = ?`
+    )
+    .get(req.params.id, userId);
+  if (!existing) return res.status(404).json({ error: "Note item not found" });
+
+  const text = req.body.text === undefined ? existing.text : String(req.body.text).trim();
+  const done = req.body.done === undefined ? existing.done : (req.body.done ? 1 : 0);
+  if (!text) return res.status(400).json({ error: "Invalid text" });
+
+  db.prepare("UPDATE note_items SET text = ?, done = ? WHERE id = ?").run(text, done, req.params.id);
+  res.json(db.prepare("SELECT * FROM note_items WHERE id = ?").get(req.params.id));
+});
+
+router.delete("/note-items/:id", (req, res) => {
+  const userId = req.session.userId;
+  const info = db
+    .prepare(
+      `DELETE FROM note_items WHERE id = ? AND module_id IN
+       (SELECT id FROM modules WHERE user_id = ?)`
+    )
+    .run(req.params.id, userId);
+  if (info.changes === 0) return res.status(404).json({ error: "Note item not found" });
+  res.status(204).end();
+});
+
 /* ---------- Logs: add / remove a study session ---------- */
 router.post("/logs", (req, res) => {
   const userId = req.session.userId;
@@ -355,6 +416,7 @@ router.delete("/account/data", (req, res) => {
   const userId = req.session.userId;
   const clear = db.transaction(() => {
     db.prepare("DELETE FROM prep_items WHERE assessment_id IN (SELECT id FROM assessments WHERE user_id = ?)").run(userId);
+    db.prepare("DELETE FROM note_items WHERE module_id IN (SELECT id FROM modules WHERE user_id = ?)").run(userId);
     db.prepare("DELETE FROM assessments WHERE user_id = ?").run(userId);
     db.prepare("DELETE FROM sessions WHERE user_id = ?").run(userId);
     db.prepare("DELETE FROM logs WHERE user_id = ?").run(userId);
