@@ -85,6 +85,7 @@ db.exec(`
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     module_id  INTEGER NOT NULL REFERENCES modules(id),
     text       TEXT NOT NULL,
+    due        TEXT,
     done       INTEGER NOT NULL DEFAULT 0,
     sort_order INTEGER NOT NULL DEFAULT 0
   );
@@ -224,6 +225,12 @@ if (!userColumns.includes("last_login_at")) {
 }
 if (!userColumns.includes("login_count")) {
   db.exec("ALTER TABLE users ADD COLUMN login_count INTEGER NOT NULL DEFAULT 0");
+}
+
+// Migration: optional due dates on note checklist tasks.
+const noteItemColumns = db.prepare("PRAGMA table_info(note_items)").all().map((c) => c.name);
+if (!noteItemColumns.includes("due")) {
+  db.exec("ALTER TABLE note_items ADD COLUMN due TEXT");
 }
 
 db.exec(`

@@ -342,6 +342,8 @@
           if (!row) return;
           if (e.target.classList.contains("nc-done")) {
             await api("PATCH", "/note-items/" + row.dataset.id, { done: e.target.checked });
+          } else if (e.target.classList.contains("nc-date")) {
+            await api("PATCH", "/note-items/" + row.dataset.id, { due: e.target.value || null });
           } else if (e.target.classList.contains("nc-text")) {
             var text = e.target.value.trim();
             if (!text) { e.target.focus(); return; }
@@ -373,6 +375,7 @@
       card.querySelector('[data-role="nc-list"]').innerHTML = items.map(function (n) {
         return '<div class="pm-row nc-row' + (n.done ? " done" : "") + '" data-id="' + n.id + '">' +
           '<input type="checkbox" class="nc-done" ' + (n.done ? "checked" : "") + ' aria-label="Mark task done" />' +
+          '<input type="date" class="nc-date" value="' + (n.due || "") + '" aria-label="Task due date" />' +
           '<input type="text" class="nc-text" value="' + esc(n.text) + '" />' +
           '<button type="button" class="del-btn nc-del" aria-label="Delete task">&times;</button>' +
         '</div>';

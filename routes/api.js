@@ -347,10 +347,11 @@ router.post("/note-items", (req, res) => {
   const mod = db.prepare("SELECT id FROM modules WHERE user_id = ? AND code = ?").get(userId, moduleCode);
   if (!mod) return res.status(400).json({ error: "Unknown module code" });
 
+  const due = req.body.due || null;
   const maxOrder = db.prepare("SELECT COALESCE(MAX(sort_order), -1) AS m FROM note_items WHERE module_id = ?").get(mod.id).m;
   const info = db
-    .prepare("INSERT INTO note_items (module_id, text, done, sort_order) VALUES (?, ?, 0, ?)")
-    .run(mod.id, text, maxOrder + 1);
+    .prepare("INSERT INTO note_items (module_id, text, due, done, sort_order) VALUES (?, ?, ?, 0, ?)")
+    .run(mod.id, text, due, maxOrder + 1);
   res.status(201).json(db.prepare("SELECT * FROM note_items WHERE id = ?").get(info.lastInsertRowid));
 });
 
@@ -366,10 +367,11 @@ router.patch("/note-items/:id", (req, res) => {
   if (!existing) return res.status(404).json({ error: "Note item not found" });
 
   const text = req.body.text === undefined ? existing.text : String(req.body.text).trim();
+  const due = req.body.due === undefined ? existing.due : (req.body.due || null);
   const done = req.body.done === undefined ? existing.done : (req.body.done ? 1 : 0);
   if (!text) return res.status(400).json({ error: "Invalid text" });
 
-  db.prepare("UPDATE note_items SET text = ?, done = ? WHERE id = ?").run(text, done, req.params.id);
+  db.prepare("UPDATE note_items SET text = ?, due = ?, done = ? WHERE id = ?").run(text, due, done, req.params.id);
   res.json(db.prepare("SELECT * FROM note_items WHERE id = ?").get(req.params.id));
 });
 
