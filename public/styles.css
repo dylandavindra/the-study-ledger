@@ -284,7 +284,7 @@
   .notecard textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   .note-saved { font-size: 11px; color: var(--ink-muted); opacity: 0; transition: opacity .2s; align-self: flex-end; }
   .note-saved.show { opacity: 1; }
-  .notecard-tasks { border-top: 1px dashed var(--border); padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .notecard-tasks { border-bottom: 1px dashed var(--border); padding-bottom: 10px; display: flex; flex-direction: column; gap: 8px; }
   .nc-row.done .nc-text { text-decoration: line-through; color: var(--ink-muted); }
 
   .drag-handle {

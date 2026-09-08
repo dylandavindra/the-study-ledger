@@ -312,12 +312,12 @@
             '<div><div class="ncode">' + esc(mod.code) + '</div><div class="nname" data-role="nname"></div></div>' +
             '<button type="button" class="drag-handle" data-role="drag-handle" draggable="true" aria-label="Drag to reorder ' + esc(mod.code) + '" title="Drag to reorder">⠿</button>' +
           '</div>' +
-          '<textarea data-role="notes" placeholder="Notes for ' + esc(mod.code) + '…"></textarea>' +
-          '<span class="note-saved" data-role="saved">Saved</span>' +
           '<div class="notecard-tasks">' +
             '<div class="modal-subhead"><span>Tasks</span><button type="button" class="btn-small" data-role="nc-add">+ Add task</button></div>' +
             '<div class="pm-list" data-role="nc-list"></div>' +
-          '</div>';
+          '</div>' +
+          '<textarea data-role="notes" placeholder="Notes for ' + esc(mod.code) + '…"></textarea>' +
+          '<span class="note-saved" data-role="saved">Saved</span>';
 
         var textarea = card.querySelector('[data-role="notes"]');
         var savedTag = card.querySelector('[data-role="saved"]');
