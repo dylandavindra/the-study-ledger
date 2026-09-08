@@ -373,10 +373,14 @@
       var items = STATE.noteItems.filter(function (n) { return n.module_id === mod.id; })
         .sort(function (a, b) { return a.sort_order - b.sort_order; });
       card.querySelector('[data-role="nc-list"]').innerHTML = items.map(function (n) {
+        var dueLabel = n.due ? esc(fmtShort(new Date(n.due + "T00:00:00"))) : "+ date";
         return '<div class="pm-row nc-row' + (n.done ? " done" : "") + '" data-id="' + n.id + '">' +
           '<input type="checkbox" class="nc-done" ' + (n.done ? "checked" : "") + ' aria-label="Mark task done" />' +
-          '<input type="date" class="nc-date" value="' + (n.due || "") + '" aria-label="Task due date" />' +
           '<input type="text" class="nc-text" value="' + esc(n.text) + '" />' +
+          '<span class="nc-date-wrap">' +
+            '<span class="nc-date-label' + (n.due ? "" : " empty") + '">' + dueLabel + '</span>' +
+            '<input type="date" class="nc-date" value="' + (n.due || "") + '" aria-label="Task due date" />' +
+          '</span>' +
           '<button type="button" class="del-btn nc-del" aria-label="Delete task">&times;</button>' +
         '</div>';
       }).join("") || '<div class="pm-empty">No tasks yet.</div>';

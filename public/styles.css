@@ -286,6 +286,15 @@
   .note-saved.show { opacity: 1; }
   .notecard-tasks { border-bottom: 1px dashed var(--border); padding-bottom: 10px; display: flex; flex-direction: column; gap: 8px; }
   .nc-row.done .nc-text { text-decoration: line-through; color: var(--ink-muted); }
+  .nc-date-wrap { position: relative; display: inline-flex; flex-shrink: 0; width: 54px; }
+  .nc-date-label {
+    width: 100%; text-align: center; font-family: var(--font-mono); font-size: 11px; padding: 7px 4px;
+    border-radius: 7px; border: 1px dashed var(--border-strong); color: var(--ink-2); white-space: nowrap; pointer-events: none;
+  }
+  .nc-date-label.empty { color: var(--ink-muted); }
+  .pm-row .nc-date-wrap .nc-date {
+    position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; opacity: 0; cursor: pointer;
+  }
 
   .drag-handle {
     border: none; background: none; color: var(--ink-muted); cursor: grab; font-size: 15px; line-height: 1;
