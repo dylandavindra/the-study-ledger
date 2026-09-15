@@ -130,10 +130,21 @@
       .sort(function (x, y) { return x.d - y.d; });
     var nextDl = undone[0];
 
+    var todayIso = isoDate(today);
+    var todaysTasks = STATE.noteItems.filter(function (n) { return n.due === todayIso; });
+    var todaysDone = todaysTasks.filter(function (n) { return n.done; }).length;
+    var todaysRemaining = todaysTasks.length - todaysDone;
+
     var tiles = [];
     tiles.push({
       label: "This week's hours", value: weekTotal.toFixed(1) + '<small>/ ' + weekTarget + 'h</small>',
       foot: allTotal.toFixed(1) + "h logged all term", cls: ""
+    });
+    tiles.push({
+      label: "Today's tasks",
+      value: todaysTasks.length ? (todaysRemaining + '<small>/ ' + todaysTasks.length + '</small>') : '—',
+      foot: todaysTasks.length ? (todaysRemaining === 0 ? "All done for today" : todaysDone + " of " + todaysTasks.length + " done") : "Nothing due today",
+      cls: ""
     });
     tiles.push({
       label: "Next deadline", value: nextDl ? daysBetween(today, nextDl.d) + '<small>days</small>' : '—',

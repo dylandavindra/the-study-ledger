@@ -145,7 +145,7 @@
   .term-pill.prompt:hover { background: var(--accent-soft); border-color: var(--accent); }
 
   /* ---------- KPI strip ---------- */
-  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 28px; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
   .kpi {
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
     padding: 16px 18px; box-shadow: var(--shadow);
