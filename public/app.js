@@ -131,21 +131,20 @@
     var nextDl = undone[0];
 
     var todayIso = isoDate(today);
-    var todaysTasks = STATE.noteItems.filter(function (n) { return n.due === todayIso; });
-    var todaysDone = todaysTasks.filter(function (n) { return n.done; }).length;
-    var todaysRemaining = todaysTasks.length - todaysDone;
+    var todaysTasks = STATE.noteItems.filter(function (n) { return n.due === todayIso; })
+      .sort(function (a, b) { return a.sort_order - b.sort_order; });
+    var todaysTasksHtml = todaysTasks.length
+      ? '<ul class="today-tasks-list">' + todaysTasks.map(function (n) {
+          return '<li' + (n.done ? ' class="done"' : '') + '>' + esc(n.text) + '</li>';
+        }).join('') + '</ul>'
+      : '<div class="today-tasks-empty">Nothing due today</div>';
 
     var tiles = [];
     tiles.push({
       label: "This week's hours", value: weekTotal.toFixed(1) + '<small>/ ' + weekTarget + 'h</small>',
       foot: allTotal.toFixed(1) + "h logged all term", cls: ""
     });
-    tiles.push({
-      label: "Today's tasks",
-      value: todaysTasks.length ? (todaysRemaining + '<small>/ ' + todaysTasks.length + '</small>') : '—',
-      foot: todaysTasks.length ? (todaysRemaining === 0 ? "All done for today" : todaysDone + " of " + todaysTasks.length + " done") : "Nothing due today",
-      cls: ""
-    });
+    tiles.push({ label: "Today's tasks", html: todaysTasksHtml, cls: "" });
     tiles.push({
       label: "Next deadline", value: nextDl ? daysBetween(today, nextDl.d) + '<small>days</small>' : '—',
       foot: nextDl ? esc(nextDl.a.module + " " + nextDl.a.label) : "nothing scheduled",
@@ -168,7 +167,8 @@
     }
 
     document.getElementById("kpi-strip").innerHTML = tiles.map(function (t) {
-      return '<div class="kpi ' + t.cls + '"><div class="label">' + t.label + '</div><div class="value">' + t.value + '</div><div class="foot">' + t.foot + '</div></div>';
+      var body = t.html ? t.html : ('<div class="value">' + t.value + '</div><div class="foot">' + t.foot + '</div>');
+      return '<div class="kpi ' + t.cls + '"><div class="label">' + t.label + '</div>' + body + '</div>';
     }).join("");
   }
 
