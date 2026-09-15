@@ -556,6 +556,101 @@
     });
   }
 
+  /* ============ Page layout (drag to reorder the main sections) ============ */
+  var REORDERABLE_SECTIONS = ["sec-log", "sec-notes", "sec-modules", "sec-timetable", "sec-deadlines", "sec-prep", "sec-chart"];
+  var SECTION_LABELS = {
+    "sec-log": "Daily Study Log",
+    "sec-notes": "Notes",
+    "sec-modules": "Modules",
+    "sec-timetable": "Class Timetable",
+    "sec-deadlines": "Assessments & Deadlines",
+    "sec-prep": "TMA / GBA Prep Plan",
+    "sec-chart": "Last 14 Days"
+  };
+
+  function getSectionOrder() {
+    var saved = ME && ME.sectionOrder;
+    var valid = Array.isArray(saved) && saved.length === REORDERABLE_SECTIONS.length &&
+      REORDERABLE_SECTIONS.every(function (id) { return saved.indexOf(id) !== -1; });
+    return valid ? saved : REORDERABLE_SECTIONS.slice();
+  }
+
+  // Modal overlays sit between sections in the markup but are position:fixed,
+  // so moving only the <section> elements reorders the page without disturbing
+  // them or the pinned header/KPIs. Inserted before the closing <footer> (not
+  // appended to the end of .wrap) so "Happy Studying" stays pinned at the bottom.
+  function applySectionOrder(order) {
+    var wrap = document.querySelector(".wrap");
+    var footer = wrap.querySelector("footer");
+    order.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) wrap.insertBefore(el, footer);
+    });
+  }
+
+  function renderLayoutList() {
+    var list = document.getElementById("layout-list");
+    var order = getSectionOrder();
+    list.innerHTML = order.map(function (id) {
+      return '<div class="layout-row" data-id="' + id + '">' +
+        '<button type="button" class="drag-handle" draggable="true" aria-label="Drag to reorder ' + esc(SECTION_LABELS[id]) + '" title="Drag to reorder">⠿</button>' +
+        '<span>' + esc(SECTION_LABELS[id]) + '</span>' +
+      '</div>';
+    }).join("");
+  }
+
+  function initLayoutDragDrop() {
+    var list = document.getElementById("layout-list");
+    var draggedId = null;
+
+    list.addEventListener("dragstart", function (e) {
+      var handle = e.target.closest(".drag-handle");
+      var row = handle ? handle.closest(".layout-row") : null;
+      if (!handle || !row) { e.preventDefault(); return; }
+      draggedId = row.dataset.id;
+      row.classList.add("dragging");
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", draggedId);
+    });
+
+    list.addEventListener("dragend", function () {
+      list.querySelectorAll(".layout-row.dragging").forEach(function (r) { r.classList.remove("dragging"); });
+      list.querySelectorAll(".layout-row.drag-over").forEach(function (r) { r.classList.remove("drag-over"); });
+      draggedId = null;
+    });
+
+    list.addEventListener("dragover", function (e) {
+      if (!draggedId) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      var overRow = e.target.closest(".layout-row");
+      list.querySelectorAll(".layout-row.drag-over").forEach(function (r) { r.classList.remove("drag-over"); });
+      if (overRow && overRow.dataset.id !== draggedId) overRow.classList.add("drag-over");
+    });
+
+    list.addEventListener("drop", async function (e) {
+      e.preventDefault();
+      var overRow = e.target.closest(".layout-row");
+      list.querySelectorAll(".layout-row.drag-over").forEach(function (r) { r.classList.remove("drag-over"); });
+      if (!draggedId || !overRow || overRow.dataset.id === draggedId) return;
+
+      var rows = Array.from(list.querySelectorAll(".layout-row"));
+      var order = rows.map(function (r) { return r.dataset.id; });
+      var fromIdx = order.indexOf(draggedId);
+      var toIdx = order.indexOf(overRow.dataset.id);
+      order.splice(fromIdx, 1);
+      order.splice(toIdx, 0, draggedId);
+
+      order.forEach(function (id) {
+        list.appendChild(rows.filter(function (r) { return r.dataset.id === id; })[0]);
+      });
+
+      applySectionOrder(order);
+      if (ME) ME.sectionOrder = order;
+      await api("PATCH", "/account/section-order", { order: order });
+    });
+  }
+
   /* ============ Settings (account info, backup export, clear-all) ============ */
   function fmtLongDate(d) { return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); }
 
@@ -584,6 +679,7 @@
       document.getElementById("settings-stats-line").textContent = (ME && ME.createdAt)
         ? ("Member since " + fmtLongDate(new Date(ME.createdAt)) + " · logged in " + ME.loginCount + (ME.loginCount === 1 ? " time" : " times"))
         : "";
+      renderLayoutList();
       resetClearPanel();
       overlay.hidden = false;
     }
@@ -1415,12 +1511,15 @@
       return;
     }
     document.getElementById("db-note").textContent = "Created by df8";
-    fetch("/api/auth/me").then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+    try {
+      var meRes = await fetch("/api/auth/me");
+      var j = meRes.ok ? await meRes.json() : null;
       if (j && j.username) {
         ME = j;
         document.getElementById("page-title").textContent = j.username + "'s Study Ledger";
       }
-    }).catch(function () {});
+    } catch (e) {}
+    applySectionOrder(getSectionOrder());
     initLogForm();
     initLogToggle();
     initNotesDragDrop();
@@ -1430,6 +1529,7 @@
     initDeadlineToggle();
     initPrepModal();
     initSettingsModal();
+    initLayoutDragDrop();
     document.getElementById("wk-prev").addEventListener("click", function () { ttWeekOffset--; renderTimetable(); });
     document.getElementById("wk-next").addEventListener("click", function () { ttWeekOffset++; renderTimetable(); });
     document.getElementById("wk-today").addEventListener("click", function () { ttWeekOffset = 0; renderTimetable(); });

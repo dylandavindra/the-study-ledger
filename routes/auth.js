@@ -73,8 +73,12 @@ router.get("/me", (req, res) => {
   if (!req.session || !req.session.userId) {
     return res.status(401).json({ error: "Not authenticated" });
   }
-  const user = db.prepare("SELECT username, created_at, login_count FROM users WHERE id = ?").get(req.session.userId);
-  res.json({ username: user.username, createdAt: user.created_at, loginCount: user.login_count });
+  const user = db.prepare("SELECT username, created_at, login_count, section_order FROM users WHERE id = ?").get(req.session.userId);
+  let sectionOrder = null;
+  if (user.section_order) {
+    try { sectionOrder = JSON.parse(user.section_order); } catch (e) { sectionOrder = null; }
+  }
+  res.json({ username: user.username, createdAt: user.created_at, loginCount: user.login_count, sectionOrder });
 });
 
 module.exports = router;

@@ -428,4 +428,20 @@ router.delete("/account/data", (req, res) => {
   res.status(204).end();
 });
 
+/* ---------- Account: persist the user's preferred page section order ---------- */
+const REORDERABLE_SECTIONS = ["sec-log", "sec-notes", "sec-modules", "sec-timetable", "sec-deadlines", "sec-prep", "sec-chart"];
+router.patch("/account/section-order", (req, res) => {
+  const userId = req.session.userId;
+  const order = req.body.order;
+  const sameSet =
+    Array.isArray(order) &&
+    order.length === REORDERABLE_SECTIONS.length &&
+    REORDERABLE_SECTIONS.every((id) => order.includes(id));
+  if (!sameSet) {
+    return res.status(400).json({ error: "order must include every section exactly once" });
+  }
+  db.prepare("UPDATE users SET section_order = ? WHERE id = ?").run(JSON.stringify(order), userId);
+  res.json({ sectionOrder: order });
+});
+
 module.exports = router;

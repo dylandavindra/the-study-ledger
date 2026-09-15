@@ -226,6 +226,9 @@ if (!userColumns.includes("last_login_at")) {
 if (!userColumns.includes("login_count")) {
   db.exec("ALTER TABLE users ADD COLUMN login_count INTEGER NOT NULL DEFAULT 0");
 }
+if (!userColumns.includes("section_order")) {
+  db.exec("ALTER TABLE users ADD COLUMN section_order TEXT");
+}
 
 // Migration: optional due dates on note checklist tasks.
 const noteItemColumns = db.prepare("PRAGMA table_info(note_items)").all().map((c) => c.name);

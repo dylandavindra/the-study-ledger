@@ -313,6 +313,15 @@
   .notecard.dragging { opacity: 0.45; }
   .notecard.drag-over { outline: 2px dashed var(--mc, var(--accent)); outline-offset: 3px; }
 
+  .layout-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .layout-row {
+    display: flex; align-items: center; gap: 6px; padding: 7px 8px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--surface-2); font-size: 13.5px; color: var(--ink);
+  }
+  .layout-row .drag-handle { margin-left: -2px; }
+  .layout-row.dragging { opacity: 0.45; }
+  .layout-row.drag-over { outline: 2px dashed var(--accent); outline-offset: 2px; }
+
   .mc-meta { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: var(--ink-2); border-top: 1px dashed var(--border); padding-top: 10px; }
   .mc-meta .row { display: flex; justify-content: space-between; gap: 8px; }
   .mc-meta .row b { color: var(--ink); font-weight: 600; }
