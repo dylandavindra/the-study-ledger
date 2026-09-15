@@ -121,19 +121,60 @@
     return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   }
 
+  // The stylesheet's default neutrals (background/border/text) all sit at
+  // roughly the same violet hue as the default accent, just at different
+  // saturation/lightness per role — so retinting the whole UI to any chosen
+  // accent is just: keep every token's S/L, swap the hue. `light.surface`
+  // is deliberately absent — cards stay pure white in light mode already.
+  var BASE_NEUTRALS = {
+    light: {
+      bg: "#efedf4", "bg-plane": "#f5f4f8", "surface-2": "#f7f5fa",
+      border: "#e1dee9", "border-strong": "#cfc9dd",
+      ink: "#1c1a24", "ink-2": "#58546a", "ink-muted": "#8b869c",
+      gridline: "#e4e1ea", baseline: "#c9c5d6"
+    },
+    dark: {
+      bg: "#17151e", "bg-plane": "#131118", surface: "#211f29", "surface-2": "#29263380",
+      border: "#362f45", "border-strong": "#493f5c",
+      ink: "#efecf5", "ink-2": "#b7b1c8", "ink-muted": "#8d87a0",
+      gridline: "#33303e", baseline: "#46425570"
+    }
+  };
+  function hueOf(hex) {
+    var rgb = hexToRgb(hex);
+    return rgbToHsl(rgb.r, rgb.g, rgb.b).h;
+  }
+  function retintHex(hex, hue) {
+    var alpha = hex.length === 9 ? hex.slice(7) : "";
+    var rgb = hexToRgb(hex.slice(0, 7));
+    var hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+    return hslToHex(hue, hsl.s, hsl.l) + alpha;
+  }
+  function applyNeutralRetint(hue, mode) {
+    var base = BASE_NEUTRALS[mode];
+    var root = document.documentElement.style;
+    Object.keys(base).forEach(function (key) {
+      root.setProperty("--" + key, retintHex(base[key], hue));
+    });
+  }
+
   function applyAccentTheme() {
     var name = localStorage.getItem("accentTheme") || "violet";
-    var vars;
+    var mode = currentThemeMode();
+    var vars, accentHex;
     if (name === "custom") {
       var hex = localStorage.getItem("accentCustomHex") || ACCENT_THEMES.violet.light.accent;
-      vars = deriveAccentVars(hex, currentThemeMode());
+      vars = deriveAccentVars(hex, mode);
+      accentHex = hex;
     } else {
-      vars = (ACCENT_THEMES[name] || ACCENT_THEMES.violet)[currentThemeMode()];
+      vars = (ACCENT_THEMES[name] || ACCENT_THEMES.violet)[mode];
+      accentHex = vars.accent;
     }
     var root = document.documentElement.style;
     root.setProperty("--accent", vars.accent);
     root.setProperty("--accent-soft", vars.soft);
     root.setProperty("--accent-ink", vars.ink);
+    applyNeutralRetint(hueOf(accentHex), mode);
   }
   // Re-applied by term-label.js's light/dark toggle, since soft/ink differ per mode.
   window.reapplyAccentTheme = applyAccentTheme;
