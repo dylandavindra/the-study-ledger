@@ -47,6 +47,133 @@
   function daysBetween(a, b) { return Math.round((b - a) / 86400000); }
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
 
+  /* ============ Accent colour theme ============ */
+  // Each curated theme pre-tunes accent/soft/ink for both modes so contrast
+  // stays readable — a hand-picked alternative to deriving colours live.
+  var ACCENT_THEMES = {
+    violet:  { light: { accent: "#4a3aa7", soft: "#ece8fb", ink: "#ffffff" }, dark: { accent: "#9c8ff0", soft: "#2c2645", ink: "#17151e" } },
+    indigo:  { light: { accent: "#3253c7", soft: "#e5eafb", ink: "#ffffff" }, dark: { accent: "#8aa5f4", soft: "#212a4a", ink: "#12131f" } },
+    emerald: { light: { accent: "#1c8a56", soft: "#e0f5e9", ink: "#ffffff" }, dark: { accent: "#5fd39a", soft: "#173829", ink: "#0e1712" } },
+    rose:    { light: { accent: "#a13a5c", soft: "#fbe8ee", ink: "#ffffff" }, dark: { accent: "#ec93b3", soft: "#3a2030", ink: "#1c1016" } },
+    amber:   { light: { accent: "#b3660b", soft: "#fbebd8", ink: "#1a1200" }, dark: { accent: "#f0b25b", soft: "#3a2a10", ink: "#1a1200" } }
+  };
+  var ACCENT_THEME_ORDER = ["violet", "indigo", "emerald", "rose", "amber"];
+
+  function hexToRgb(hex) {
+    var m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return m ? { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) } : { r: 74, g: 58, b: 167 };
+  }
+  function rgbToHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    var max = Math.max(r, g, b), min = Math.min(r, g, b), h, s, l = (max + min) / 2;
+    if (max === min) { h = s = 0; }
+    else {
+      var d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+      else if (max === g) h = (b - r) / d + 2;
+      else h = (r - g) / d + 4;
+      h /= 6;
+    }
+    return { h: h * 360, s: s * 100, l: l * 100 };
+  }
+  function hslToHex(h, s, l) {
+    h /= 360; s /= 100; l /= 100;
+    function hue2rgb(p, q, t) {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1 / 6) return p + (q - p) * 6 * t;
+      if (t < 1 / 2) return q;
+      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+      return p;
+    }
+    var r, g, b;
+    if (s === 0) { r = g = b = l; }
+    else {
+      var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      var p = 2 * l - q;
+      r = hue2rgb(p, q, h + 1 / 3);
+      g = hue2rgb(p, q, h);
+      b = hue2rgb(p, q, h - 1 / 3);
+    }
+    return "#" + [r, g, b].map(function (x) { var h2 = Math.round(x * 255).toString(16); return h2.length < 2 ? "0" + h2 : h2; }).join("");
+  }
+  function relLuminance(r, g, b) {
+    var a = [r, g, b].map(function (v) {
+      v /= 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2];
+  }
+  function deriveAccentVars(hex, mode) {
+    var rgb = hexToRgb(hex);
+    var hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+    var soft = mode === "dark"
+      ? hslToHex(hsl.h, Math.min(hsl.s, 55), 20)
+      : hslToHex(hsl.h, Math.min(hsl.s, 70), 93);
+    var ink = relLuminance(rgb.r, rgb.g, rgb.b) > 0.42 ? "#17151e" : "#ffffff";
+    return { accent: hex, soft: soft, ink: ink };
+  }
+
+  function currentThemeMode() {
+    var dt = document.documentElement.getAttribute("data-theme");
+    if (dt === "dark" || dt === "light") return dt;
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+
+  function applyAccentTheme() {
+    var name = localStorage.getItem("accentTheme") || "violet";
+    var vars;
+    if (name === "custom") {
+      var hex = localStorage.getItem("accentCustomHex") || ACCENT_THEMES.violet.light.accent;
+      vars = deriveAccentVars(hex, currentThemeMode());
+    } else {
+      vars = (ACCENT_THEMES[name] || ACCENT_THEMES.violet)[currentThemeMode()];
+    }
+    var root = document.documentElement.style;
+    root.setProperty("--accent", vars.accent);
+    root.setProperty("--accent-soft", vars.soft);
+    root.setProperty("--accent-ink", vars.ink);
+  }
+  // Re-applied by term-label.js's light/dark toggle, since soft/ink differ per mode.
+  window.reapplyAccentTheme = applyAccentTheme;
+
+  function initAccentThemePicker() {
+    var swatchWrap = document.getElementById("theme-swatches");
+    var customRow = document.getElementById("theme-custom-row");
+    var customInput = document.getElementById("theme-custom-input");
+
+    function selectedName() { return localStorage.getItem("accentTheme") || "violet"; }
+
+    function renderSwatches() {
+      var sel = selectedName();
+      var mode = currentThemeMode();
+      swatchWrap.innerHTML = ACCENT_THEME_ORDER.map(function (name) {
+        var color = ACCENT_THEMES[name][mode].accent;
+        return '<button type="button" class="theme-swatch' + (sel === name ? " active" : "") + '" data-name="' + name + '" style="background:' + color + '" aria-label="' + name + ' theme" title="' + name.charAt(0).toUpperCase() + name.slice(1) + '"></button>';
+      }).join("") + '<button type="button" class="theme-swatch custom-swatch' + (sel === "custom" ? " active" : "") + '" data-name="custom" aria-label="Custom colour" title="Custom"></button>';
+      customRow.hidden = sel !== "custom";
+      if (sel === "custom") customInput.value = localStorage.getItem("accentCustomHex") || ACCENT_THEMES.violet.light.accent;
+    }
+
+    swatchWrap.addEventListener("click", function (e) {
+      var btn = e.target.closest(".theme-swatch");
+      if (!btn) return;
+      localStorage.setItem("accentTheme", btn.dataset.name);
+      applyAccentTheme();
+      renderSwatches();
+    });
+
+    customInput.addEventListener("input", function () {
+      localStorage.setItem("accentTheme", "custom");
+      localStorage.setItem("accentCustomHex", customInput.value);
+      applyAccentTheme();
+    });
+    customInput.addEventListener("change", renderSwatches);
+
+    renderSwatches();
+  }
+
   // Term dates follow SUSS's fixed baseline (see term-label.js) rather than
   // anything the user has to type in: Jul Sem = 2nd Mon of Aug - last Sun of
   // Oct, Jan Sem = 2nd Mon of Jan - last Sun of Mar. `active` is false during
@@ -1407,6 +1534,7 @@
   }
 
   document.addEventListener("DOMContentLoaded", async function () {
+    applyAccentTheme();
     try {
       await loadState();
     } catch (err) {
@@ -1430,6 +1558,7 @@
     initDeadlineToggle();
     initPrepModal();
     initSettingsModal();
+    initAccentThemePicker();
     document.getElementById("wk-prev").addEventListener("click", function () { ttWeekOffset--; renderTimetable(); });
     document.getElementById("wk-next").addEventListener("click", function () { ttWeekOffset++; renderTimetable(); });
     document.getElementById("wk-today").addEventListener("click", function () { ttWeekOffset = 0; renderTimetable(); });

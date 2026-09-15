@@ -76,6 +76,9 @@
       btn.textContent = theme === "dark" ? "🌚" : "🌞";
       btn.setAttribute("aria-label", theme === "dark" ? "Switch to light mode" : "Switch to dark mode");
     }
+    // The accent theme's "soft"/"ink" shades differ per mode, so app.js
+    // re-resolves them whenever light/dark flips (only defined on the main app page).
+    if (window.reapplyAccentTheme) window.reapplyAccentTheme();
   }
 
   document.addEventListener("DOMContentLoaded", function () {

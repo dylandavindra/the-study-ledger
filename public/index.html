@@ -41,6 +41,16 @@
         </div>
 
         <div class="modal-subsection">
+          <div class="modal-subhead"><span>Colour theme</span></div>
+          <p class="field-hint">Pick an accent colour, or set your own.</p>
+          <div class="theme-swatches" id="theme-swatches"></div>
+          <div class="theme-custom-row" id="theme-custom-row" hidden>
+            <input type="color" id="theme-custom-input" value="#4a3aa7" aria-label="Custom accent colour" />
+            <span class="field-hint">Custom colour</span>
+          </div>
+        </div>
+
+        <div class="modal-subsection">
           <div class="modal-subhead"><span>Backup</span></div>
           <p class="field-hint">Download everything as a JSON file before you clear it out.</p>
           <button type="button" class="btn btn-ghost" id="settings-export">Download backup</button>
